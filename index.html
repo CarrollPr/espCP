@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Web Flasher</title>
+    <style>
+        :root {
+            --primary-color: #4a9eff;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+            --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0a0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #4a9eff, #6c5ce7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px) saturate(120%);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title i {
+            color: var(--primary-color);
+        }
+
+        .grid-2-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        select, input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1rem;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(74, 158, 255, 0.1);
+            border: 1px solid rgba(74, 158, 255, 0.3);
+            border-radius: 8px;
+            color: var(--primary-color);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: rgba(74, 158, 255, 0.2);
+            border-color: rgba(74, 158, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border: 1px solid var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background: #3a8eef;
+            border-color: #3a8eef;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+            border: 1px solid var(--success-color);
+        }
+
+        .btn-success:hover {
+            background: #43a047;
+            border-color: #43a047;
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+            border: 1px solid var(--warning-color);
+        }
+
+        .btn-warning:hover {
+            background: #f57c00;
+            border-color: #f57c00;
+        }
+
+        .btn-error {
+            background: var(--error-color);
+            color: white;
+            border: 1px solid var(--error-color);
+        }
+
+        .btn-error:hover {
+            background: #e53935;
+            border-color: #e53935;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn:disabled:hover {
+            background: rgba(74, 158, 255, 0.1);
+            border-color: rgba(74, 158, 255, 0.3);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .file-drop-area {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 16px;
+        }
+
+        .file-drop-area:hover, .file-drop-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(74, 158, 255, 0.05);
+        }
+
+        .file-drop-area i {
+            font-size: 2rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-list {
+            margin-top: 16px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .file-name {
+            font-weight: 500;
+        }
+
+        .file-size {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), #6c5ce7);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+        }
+
+        .terminal {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .terminal-line {
+            margin-bottom: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .terminal-info {
+            color: var(--primary-color);
+        }
+
+        .terminal-success {
+            color: var(--success-color);
+        }
+
+        .terminal-warning {
+            color: var(--warning-color);
+        }
+
+        .terminal-error {
+            color: var(--error-color);
+        }
+
+        .terminal-debug {
+            color: var(--text-muted);
+        }
+
+        .terminal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.connected {
+            background: var(--success-color);
+            box-shadow: 0 0 10px var(--success-color);
+        }
+
+        .status-dot.flashing {
+            background: var(--primary-color);
+            box-shadow: 0 0 10px var(--primary-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .banner {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .advanced-options {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 5px;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            stroke-width: 0;
+            stroke: currentColor;
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ESP32 Web Flasher</h1>
+            <p class="subtitle">Прошивка ESP32 через браузер с использованием esptool-js и Web Serial API</p>
+        </header>
+
+        <div id="unsupported-banner" class="banner hidden">
+            <h3>Ваш браузер не поддерживает WebSerial API.</h3>
+            <p>Пожалуйста, используйте Chrome или Edge на компьютере.</p>
+        </div>
+
+        <div id="main-content">
+            <div class="glass-panel">
+                <div class="status-bar">
+                    <div class="status-indicator">
+                        <div class="status-dot" id="status-dot"></div>
+                        <span id="status-text">Не подключено</span>
+                    </div>
+                    <div>
+                        <button id="connect-btn" class="btn btn-primary">
+                            <span class="icon">🔌</span> Выбрать порт
+                        </button>
+                        <button id="disconnect-btn" class="btn" disabled>
+                            <span class="icon">❌</span> Отключиться
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid-2-col">
+                    <div>
+                        <h3 class="panel-title">
+                            <span class="icon">⚙️</span> Настройки подключения
+                        </h3>
+
+                        <div class="form-group">
+                            <label for="baud-rate">Скорость (Baud Rate):</label>
+                            <select id="baud-rate">
+                                <option value="115200">115200</option>
+                                <option value="230400">230400</option>
+                                <option value="460800" selected>460800</option>
+                                <option value="921600">921600</option>
+                            </select>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="auto-bootloader" checked>
+                            <label for="auto-bootloader">Авто-вход в bootloader (RTS/DTR)</label>
+                            <div class="tooltip">
+                                <span class="icon">❓</span>
+                                <span class="tooltiptext">Автоматически переводит ESP32 в режим загрузчика с помощью сигналов RTS/DTR</span>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="verify-flash" checked>
+                            <label for="verify-flash">Проверять после записи</label>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="debug-mode">
+                            <label for="debug-mode">Режим отладки</label>
+                        </div>
+
+                        <div class="advanced-options">
+                            <h4>Расширенные настройки</h4>
+                            
+                            <div class="form-group">
+                                <label for="chunk-size">Размер блока (bytes):</label>
+                                <input type="number" id="chunk-size" value="4096" min="128" max="16384">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="timeout">Таймаут (ms):</label>
+                                <input type="number" id="timeout" value="3000" min="1000" max="10000">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="retries">Повторы:</label>
+                                <input type="number" id="retries" value="3" min="1" max="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="panel-title">
+                            <span class="icon">📁</span> Прошивка
+                        </h3>
+
+                        <div class="file-drop-area" id="file-drop-area">
+                            <div class="icon">📂</div>
+                            <p>Перетащите файлы .bin сюда или</p>
+                            <button class="btn" id="file-select-btn">Выбрать файлы</button>
+                            <input type="file" id="file-input" class="file-input" accept=".bin" multiple>
+                        </div>
+
+                        <div class="file-list" id="file-list"></div>
+
+                        <div class="form-group">
+                            <label for="flash-address">Адрес прошивки (hex):</label>
+                            <input type="text" id="flash-address" value="0x10000" placeholder="0x10000">
+                            <small>Стандартные адреса: bootloader 0x1000, partition table 0x8000, app 0x10000</small>
+                        </div>
+
+                        <button id="flash-btn" class="btn btn-success" disabled>
+                            <span class="icon">⚡</span> Прошить
+                        </button>
+
+                        <button id="erase-btn" class="btn btn-warning">
+                            <span class="icon">🧹</span> Стереть чип
+                        </button>
+
+                        <button id="reset-btn" class="btn">
+                            <span class="icon">🔄</span> Сбросить плату
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <h3 class="panel-title">
+                    <span class="icon">📊</span> Прогресс
+                </h3>
+
+                <div class="progress-container">
+                    <div class="progress-info">
+                        <span id="progress-text">Готово</span>
+                        <span id="progress-details">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <h3 class="panel-title">
+                    <span class="icon">📟</span> Терминал
+                </h3>
+
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line terminal-info">Готов к работе. Выберите порт и файл для прошивки.</div>
+                </div>
+
+                <div class="terminal-actions">
+                    <button id="clear-log-btn" class="btn">
+                        <span class="icon">🗑️</span> Очистить лог
+                    </button>
+                    <button id="copy-log-btn" class="btn">
+                        <span class="icon">📋</span> Скопировать лог
+                    </button>
+                    <button id="download-log-btn" class="btn">
+                        <span class="icon">💾</span> Скачать лог (.txt)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            by Aik Carroll
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/esptool-js@0.0.7/dist/esptool-js.bundle.js"></script>
+
+    <script>
+        if (!('serial' in navigator)) {
+            document.getElementById('unsupported-banner').classList.remove('hidden');
+            document.getElementById('main-content').classList.add('hidden');
+        }
+
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            logToTerminal('warning', 'Сайт открыт не по HTTPS. Web Serial API может не работать.');
+        }
+
+        let port = null;
+        let esptool = null;
+        let reader = null;
+        let files = [];
+        let isFlashing = false;
+
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const flashBtn = document.getElementById('flash-btn');
+        const eraseBtn = document.getElementById('erase-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const fileSelectBtn = document.getElementById('file-select-btn');
+        const fileInput = document.getElementById('file-input');
+        const fileDropArea = document.getElementById('file-drop-area');
+        const fileList = document.getElementById('file-list');
+        const terminal = document.getElementById('terminal');
+        const clearLogBtn = document.getElementById('clear-log-btn');
+        const copyLogBtn = document.getElementById('copy-log-btn');
+        const downloadLogBtn = document.getElementById('download-log-btn');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        const progressDetails = document.getElementById('progress-details');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof ESPTool !== 'undefined') {
+                esptool = ESPTool;
+                logToTerminal('info', 'esptool-js загружен успешно');
+            } else {
+                logToTerminal('error', 'Ошибка загрузки esptool-js');
+            }
+
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            connectBtn.addEventListener('click', connectToPort);
+            disconnectBtn.addEventListener('click', disconnectFromPort);
+
+            flashBtn.addEventListener('click', flashFirmware);
+            eraseBtn.addEventListener('click', eraseChip);
+            resetBtn.addEventListener('click', resetBoard);
+
+            fileSelectBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            fileDropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.add('dragover');
+            });
+            
+            fileDropArea.addEventListener('dragleave', () => {
+                fileDropArea.classList.remove('dragover');
+            });
+            
+            fileDropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.remove('dragover');
+                handleFileDrop(e.dataTransfer.files);
+            });
+
+            clearLogBtn.addEventListener('click', clearTerminal);
+            copyLogBtn.addEventListener('click', copyTerminal);
+            downloadLogBtn.addEventListener('click', downloadTerminal);
+        }
+
+        async function connectToPort() {
+            try {
+                logToTerminal('info', 'Запрос доступа к последовательному порту...');
+
+                const filters = [
+                    { usbVendorId: 0x10C4, usbProductId: 0xEA60 },
+                    { usbVendorId: 0x1A86, usbProductId: 0x7523 },
+                    { usbVendorId: 0x0403, usbProductId: 0x6001 },
+                    { usbVendorId: 0x067B, usbProductId: 0x2303 } 
+                ];
+                
+                port = await navigator.serial.requestPort({ filters });
+                logToTerminal('info', `Порт выбран: ${port.getInfo().usbProductId || 'Unknown'}`);
+                
+                const baudRate = parseInt(document.getElementById('baud-rate').value);
+                await port.open({ baudRate });
+                logToTerminal('success', `Порт открыт со скоростью ${baudRate}`);
+                
+                updateStatus('connected', 'Подключено');
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                flashBtn.disabled = files.length === 0;
+                
+                if (document.getElementById('auto-bootloader').checked) {
+                    await autoEnterBootloader();
+                }
+                
+            } catch (error) {
+                logToTerminal('error', `Ошибка подключения: ${error.message}`);
+            }
+        }
+
+        async function disconnectFromPort() {
+            if (port) {
+                try {
+                    if (reader) {
+                        await reader.cancel();
+                        reader = null;
+                    }
+                    
+                    await port.close();
+                    logToTerminal('info', 'Порт закрыт');
+                } catch (error) {
+                    logToTerminal('error', `Ошибка отключения: ${error.message}`);
+                } finally {
+                    port = null;
+                    updateStatus('disconnected', 'Не подключено');
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    flashBtn.disabled = true;
+                }
+            }
+        }
+
+        async function autoEnterBootloader() {
+            if (!port) return;
+            
+            try {
+                logToTerminal('info', 'Попытка автоматического входа в bootloader...');
+
+                await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                logToTerminal('success', 'Авто-вход в bootloader выполнен');
+            } catch (error) {
+                logToTerminal('warning', 'Авто-вход в bootloader не сработал. Удерживайте BOOT (GPIO0), нажмите RESET (EN), отпустите RESET, отпустите BOOT.');
+            }
+        }
+
+        async function flashFirmware() {
+            if (!port || files.length === 0 || isFlashing) return;
+            
+            isFlashing = true;
+            updateStatus('flashing', 'Прошивка...');
+            flashBtn.disabled = true;
+            
+            try {
+                const baudRate = parseInt(document.getElementById('baud-rate').value);
+                const chunkSize = parseInt(document.getElementById('chunk-size').value);
+                const timeout = parseInt(document.getElementById('timeout').value);
+                const retries = parseInt(document.getElementById('retries').value);
+                const verify = document.getElementById('verify-flash').checked;
+                const debug = document.getElementById('debug-mode').checked;
+
+                logToTerminal('info', 'Подключение к ESP32...');
+                const esp = new esptool(port, { baudRate, debug });
+                
+                logToTerminal('info', 'Синхронизация...');
+                await esp.connect(timeout);
+                logToTerminal('success', 'Синхронизировано с ESP32');
+
+                const flashData = [];
+                for (const file of files) {
+                    const address = file.address || document.getElementById('flash-address').value;
+                    flashData.push({ address: parseInt(address), data: file.data });
+                    logToTerminal('info', `Файл: ${file.name} -> 0x${parseInt(address).toString(16)} (${file.data.length} байт)`);
+                }
+                
+                logToTerminal('info', 'Начало записи прошивки...');
+                const totalSize = flashData.reduce((sum, item) => sum + item.data.length, 0);
+                let written = 0;
+                
+                const progressCallback = (bytesWritten, totalBytes) => {
+                    written = bytesWritten;
+                    const percent = Math.round((bytesWritten / totalBytes) * 100);
+                    updateProgress(percent, bytesWritten, totalBytes);
+                };
+                
+                await esp.writeFlash(flashData, chunkSize, retries, progressCallback);
+                logToTerminal('success', 'Запись завершена');
+                
+                if (verify) {
+                    logToTerminal('info', 'Проверка прошивки...');
+                    await esp.verifyFlash(flashData, chunkSize);
+                    logToTerminal('success', 'Проверка пройдена');
+                }
+                
+                logToTerminal('success', 'Готово — устройство запущено.');
+                updateProgress(100, totalSize, totalSize);
+                
+            } catch (error) {
+                logToTerminal('error', `Ошибка прошивки: ${error.message}`);
+                updateProgress(0, 0, 0);
+            } finally {
+                isFlashing = false;
+                updateStatus('connected', 'Подключено');
+                flashBtn.disabled = files.length === 0;
+            }
+        }
+
+        async function eraseChip() {
+            if (!port || isFlashing) return;
+            
+            isFlashing = true;
+            updateStatus('flashing', 'Стирание...');
+            eraseBtn.disabled = true;
+            
+            try {
+                const baudRate = parseInt(document.getElementById('baud-rate').value);
+                const timeout = parseInt(document.getElementById('timeout').value);
+                
+                logToTerminal('info', 'Подключение к ESP32...');
+                const esp = new esptool(port, { baudRate });
+                await esp.connect(timeout);
+                
+                logToTerminal('warning', 'Стирание всего чипа...');
+                await esp.eraseChip();
+                logToTerminal('success', 'Чип стерт');
+                
+            } catch (error) {
+                logToTerminal('error', `Ошибка стирания: ${error.message}`);
+            } finally {
+                isFlashing = false;
+                updateStatus('connected', 'Подключено');
+                eraseBtn.disabled = false;
+            }
+        }
+
+        async function resetBoard() {
+            if (!port) return;
+            
+            try {
+                await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+                await new Promise(resolve => setTimeout(resolve, 100));
+                await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+                
+                logToTerminal('info', 'Плата сброшена');
+            } catch (error) {
+                logToTerminal('error', `Ошибка сброса: ${error.message}`);
+            }
+        }
+
+        function handleFileSelect(e) {
+            handleFiles(e.target.files);
+        }
+
+        function handleFileDrop(droppedFiles) {
+            handleFiles(droppedFiles);
+        }
+
+        function handleFiles(fileList) {
+            files = [];
+            fileList = Array.from(fileList).filter(file => file.name.endsWith('.bin'));
+            
+            if (fileList.length === 0) {
+                logToTerminal('warning', 'Файлы .bin не найдены');
+                return;
+            }
+            
+            for (const file of fileList) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const arrayBuffer = e.target.result;
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    
+                    files.push({
+                        name: file.name,
+                        size: file.size,
+                        data: uint8Array,
+                        address: null
+                    });
+                    
+                    updateFileList();
+                    
+                    if (port) {
+                        flashBtn.disabled = false;
+                    }
+                };
+                
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <div class="file-actions">
+                        <input type="text" class="file-address" value="${file.address || document.getElementById('flash-address').value}" placeholder="0x10000" data-index="${index}">
+                        <button class="btn btn-error remove-file" data-index="${index}">
+                            <span class="icon">❌</span>
+                        </button>
+                    </div>
+                `;
+                
+                fileList.appendChild(fileItem);
+            });
+            
+            document.querySelectorAll('.remove-file').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    files.splice(index, 1);
+                    updateFileList();
+                    
+                    if (files.length === 0) {
+                        flashBtn.disabled = true;
+                    }
+                });
+            });
+            
+            document.querySelectorAll('.file-address').forEach(input => {
+                input.addEventListener('change', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    files[index].address = this.value;
+                });
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function updateProgress(percent, written, total) {
+            progressFill.style.width = `${percent}%`;
+            progressDetails.textContent = `${percent}% (${formatFileSize(written)} / ${formatFileSize(total)})`;
+            
+            if (percent === 100) {
+                progressText.textContent = 'Завершено';
+            } else if (percent > 0) {
+                progressText.textContent = 'Прошивка...';
+            } else {
+                progressText.textContent = 'Готово';
+            }
+        }
+
+        function updateStatus(status, text) {
+            statusDot.className = 'status-dot';
+            statusText.textContent = text;
+            
+            if (status === 'connected') {
+                statusDot.classList.add('connected');
+            } else if (status === 'flashing') {
+                statusDot.classList.add('flashing');
+            }
+        }
+
+        function logToTerminal(type, message) {
+            const line = document.createElement('div');
+            line.className = `terminal-line terminal-${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            line.textContent = `[${timestamp}] ${message}`;
+            
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearTerminal() {
+            terminal.innerHTML = '';
+            logToTerminal('info', 'Лог очищен');
+        }
+
+        function copyTerminal() {
+            const text = Array.from(terminal.children)
+                .map(line => line.textContent)
+                .join('\n');
+            
+            navigator.clipboard.writeText(text)
+                .then(() => logToTerminal('info', 'Лог скопирован в буфер обмена'))
+                .catch(err => logToTerminal('error', 'Ошибка копирования: ' + err));
+        }
+
+        function downloadTerminal() {
+            const text = Array.from(terminal.children)
+                .map(line => line.textContent)
+                .join('\n');
+            
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `esp32-flash-log-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            logToTerminal('info', 'Лог скачан');
+        }
+
+        /*
+        ESP32 Web Flasher - Инструкция по использованию
+        
+        1. Подготовка ESP32:
+           - Автоматический вход в bootloader: включен по умолчанию (использует RTS/DTR)
+           - Ручной вход: если авто-вход не сработал, удерживайте BOOT (GPIO0), 
+             нажмите RESET (EN), отпустите RESET, отпустите BOOT
+        
+        2. Стандартные адреса прошивки:
+           - Bootloader: 0x1000
+           - Partition Table: 0x8000
+           - Application: 0x10000
+        
+        3. Рекомендации при ошибках:
+           - "Timed out waiting for packet header": плата не в bootloader, 
+             выполните ручной вход в bootloader
+           - Ошибки записи: попробуйте снизить скорость (baud rate) и размер блока (chunk size)
+           - Проверьте кабель и питание ESP32
+        
+        4. Тестирование:
+           - Откройте страницу по HTTPS в Chrome/Edge на ПК
+           - Подключите ESP32 через USB
+           - Нажмите "Выбрать порт" и дайте разрешение
+           - Загрузите .bin файл и нажмите "Прошить"
+           - Убедитесь, что виден прогресс и лог операций
+        
+        Примечание: Все операции выполняются в браузере с использованием esptool-js и Web Serial API.
+        */
+    </script>
+</body>
+</html>
