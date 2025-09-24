@@ -7,6 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
         * {
             margin: 0;
@@ -16,10 +18,24 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            background: linear-gradient(-45deg, #0f1419, #1a202c, #2d3748, #1e293b);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
             color: #ffffff;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
         }
 
         .container {
@@ -32,11 +48,11 @@
         }
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.04);
-            backdrop-filter: blur(10px) saturate(120%);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px) saturate(120%);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             padding: 24px;
             margin-bottom: 20px;
         }
@@ -47,13 +63,14 @@
         }
 
         .header h1 {
-            font-size: 2.5rem;
+            font-size: 2.8rem;
             font-weight: 700;
             margin-bottom: 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #fff 0%, #f0f9ff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            text-shadow: 0 0 40px rgba(255,255,255,0.3);
         }
 
         .header p {
@@ -123,13 +140,15 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             border: none;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            font-weight: 600;
         }
 
         .btn-primary:hover {
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.6);
+            transform: translateY(-3px);
         }
 
         .file-upload {
@@ -255,12 +274,20 @@
 
         .mobile-warning {
             display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             text-align: center;
-            padding: 40px 20px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 16px;
-            margin: 20px;
+            padding: 40px 30px;
+            background: rgba(239, 68, 68, 0.15);
+            backdrop-filter: blur(20px) saturate(120%);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 20px;
+            margin: 0;
+            max-width: 90vw;
+            width: 400px;
+            z-index: 1000;
         }
 
         .hidden {
@@ -281,6 +308,7 @@
             }
         }
 
+        /* Scrollbar styling */
         .terminal::-webkit-scrollbar {
             width: 8px;
         }
@@ -314,21 +342,25 @@
     </style>
 </head>
 <body>
+    <!-- Mobile Warning -->
     <div class="mobile-warning">
-        <h2>⚠️ Браузер не поддерживается</h2>
+        <h2><i data-lucide="alert-triangle"></i> Браузер не поддерживается</h2>
         <p>Ваш браузер не поддерживает WebSerial API. Пожалуйста, используйте Chrome или Edge на компьютере.</p>
     </div>
 
+    <!-- Desktop Content -->
     <div class="container desktop-content">
         <div class="glass-panel header">
-            <h1>ESP32 Web Flasher</h1>
+            <h1><i data-lucide="cpu" style="display: inline-block; margin-right: 12px;"></i>ESP32 Web Flasher</h1>
             <p>Прошивка ESP32 плат через браузер с помощью Web Serial API</p>
         </div>
 
         <div class="main-content">
+            <!-- Connection Panel -->
             <div class="glass-panel connection-panel">
                 <h2 class="panel-title">
                     <span class="status-indicator" id="connectionStatus"></span>
+                    <i data-lucide="wifi"></i>
                     Подключение
                 </h2>
                 
@@ -380,23 +412,19 @@
                 </div>
             </div>
 
+            <!-- Flash Panel -->
             <div class="glass-panel flash-panel">
-                <h2 class="panel-title">Прошивка</h2>
+                <h2 class="panel-title"><i data-lucide="download"></i>Прошивка</h2>
                 
                 <div class="file-upload" id="fileUpload">
-                    <div>📁 Перетащите .bin файлы сюда или нажмите для выбора</div>
+                    <div><i data-lucide="folder-open" style="margin-right: 8px;"></i>Перетащите .bin файлы сюда или нажмите для выбора</div>
                     <input type="file" id="fileInput" accept=".bin" multiple style="display: none;">
                 </div>
 
                 <div id="fileList"></div>
 
-                <div class="form-group">
-                    <label>Быстрый выбор адреса:</label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="btn" onclick="setAddress('0x1000')">Bootloader (0x1000)</button>
-                        <button class="btn" onclick="setAddress('0x8000')">Partition (0x8000)</button>
-                        <button class="btn" onclick="setAddress('0x10000')">App (0x10000)</button>
-                    </div>
+                <div style="font-size: 0.9rem; opacity: 0.7; margin: 10px 0;">
+                    💡 Стандартные адреса: 0x1000 (bootloader), 0x8000 (partition), 0x10000 (app)
                 </div>
 
                 <button class="btn btn-primary" id="flashBtn" disabled>Прошить</button>
@@ -413,13 +441,14 @@
             </div>
         </div>
 
+        <!-- Terminal -->
         <div class="glass-panel">
             <div class="terminal-controls">
-                <span style="font-weight: 600;">Терминал</span>
+                <span style="font-weight: 600;"><i data-lucide="terminal" style="margin-right: 8px;"></i>Терминал</span>
                 <div style="margin-left: auto; display: flex; gap: 10px;">
-                    <button class="btn" onclick="clearTerminal()">Очистить</button>
-                    <button class="btn" onclick="copyLog()">Копировать лог</button>
-                    <button class="btn" onclick="downloadLog()">Скачать лог</button>
+                    <button class="btn" onclick="clearTerminal()"><i data-lucide="trash-2" style="margin-right: 4px;"></i>Очистить</button>
+                    <button class="btn" onclick="copyLog()"><i data-lucide="copy" style="margin-right: 4px;"></i>Копировать лог</button>
+                    <button class="btn" onclick="downloadLog()"><i data-lucide="download" style="margin-right: 4px;"></i>Скачать лог</button>
                 </div>
             </div>
             <div class="terminal" id="terminal"></div>
@@ -430,7 +459,9 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/esptool-js@0.5.7/lib/index.js"></script>
+<script src="https://unpkg.com/esptool-js@0.5.7/lib/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/lib/index.js"></script>
+
     
     <script>
         /*
@@ -451,16 +482,18 @@
         ✓ Проверить загрузку esptool-js (консоль браузера)
         ✓ Подключение WebSerial (Chrome/Edge на ПК)
         ✓ Автоматический вход в bootloader
-        ✓ Загрузка и прошивка NAME.bin
+        ✓ Загрузка и прошивка blink.bin
         ✓ Проверка на мобильном (должен показать предупреждение)
         */
 
+        // Global variables
         let port = null;
         let loader = null;
         let transport = null;
         let isConnected = false;
         let terminalLog = [];
 
+        // Check if we're in a secure context and browser supports WebSerial
         function checkWebSerialSupport() {
             if (!window.isSecureContext) {
                 logToTerminal('❌ Требуется HTTPS или localhost для работы Web Serial API', 'error');
@@ -475,6 +508,7 @@
             return true;
         }
 
+        // Check esptool-js library loading
         function checkESPToolLibrary() {
             setTimeout(() => {
                 const espToolKeys = Object.keys(window.esptooljs || window.ESPLoader || window.esptool || {});
@@ -489,6 +523,7 @@
             }, 1000);
         }
 
+        // Terminal logging
         function logToTerminal(message, type = 'info') {
             const terminal = document.getElementById('terminal');
             const timestamp = new Date().toLocaleTimeString();
@@ -521,6 +556,7 @@
             URL.revokeObjectURL(url);
         }
 
+        // WebSerial Transport Adapter
         class WebSerialTransportAdapter {
             constructor(port) {
                 this.port = port;
@@ -593,10 +629,12 @@
             }
         }
 
+        // Auto bootloader entry
         async function autoEnterBootloader(port) {
             try {
                 logToTerminal('🔄 Попытка автоматического входа в bootloader...', 'info');
                 
+                // Reset sequence based on esptool timing
                 await port.setSignals({ dataTerminalReady: false, requestToSend: true });
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
@@ -615,6 +653,7 @@
             }
         }
 
+        // Connect to ESP32
         async function connectToESP32() {
             if (!checkWebSerialSupport()) return;
             
@@ -622,10 +661,10 @@
                 logToTerminal('🔍 Запрос порта...', 'info');
                 
                 const filters = [
-                    { usbVendorId: 0x10C4 },
-                    { usbVendorId: 0x1A86 },
-                    { usbVendorId: 0x0403 },
-                    { usbVendorId: 0x067B },
+                    { usbVendorId: 0x10C4 }, // CP210x
+                    { usbVendorId: 0x1A86 }, // CH340
+                    { usbVendorId: 0x0403 }, // FTDI
+                    { usbVendorId: 0x067B }, // Prolific
                 ];
                 
                 port = await navigator.serial.requestPort({ filters });
@@ -638,11 +677,13 @@
                     return;
                 }
                 
+                // Auto-reset if enabled
                 const autoReset = document.getElementById('autoReset').checked;
                 if (autoReset) {
                     await autoEnterBootloader(port);
                 }
                 
+                // Create ESPLoader instance
                 const terminal = {
                     clean() {},
                     writeLine(data) { 
@@ -687,6 +728,7 @@
             }
         }
 
+        // Flash firmware
         async function flashFirmware() {
             if (!loader || !isConnected) {
                 logToTerminal('❌ Сначала подключитесь к устройству', 'error');
@@ -709,6 +751,7 @@
                 
                 progressContainer.style.display = 'block';
                 
+                // Prepare files array
                 const files = [];
                 for (const item of fileItems) {
                     const address = parseInt(item.dataset.address, 16);
@@ -720,17 +763,20 @@
                     });
                 }
                 
+                // Erase chip if requested
                 if (document.getElementById('eraseChip').checked) {
                     logToTerminal('🗑️ Полная очистка чипа...', 'info');
                     await loader.eraseFlash();
                 }
                 
+                // Flash options
                 const flashOptions = {
                     reportProgress: (fileIndex, written, total) => {
                         const progress = (written / total) * 100;
                         progressFill.style.width = `${progress}%`;
                         progressText.textContent = `${Math.round(progress)}%`;
                         
+                        // Calculate speed (simplified)
                         const speed = (written / 1024).toFixed(1);
                         speedText.textContent = `${speed} KB/s`;
                     },
@@ -740,12 +786,15 @@
                 logToTerminal('📝 Запись прошивки...', 'info');
                 await loader.writeFlash(files, flashOptions);
                 
+                // Verify if enabled
                 if (document.getElementById('verifyAfterWrite').checked) {
                     logToTerminal('🔍 Проверка прошивки...', 'info');
+                    // Note: verify implementation depends on esptool-js version
                 }
                 
                 logToTerminal('🚀 Готово — устройство запущено', 'success');
                 
+                // Reset device
                 await loader.hardReset();
                 
                 progressFill.style.width = '100%';
@@ -757,6 +806,7 @@
             }
         }
 
+        // File handling
         function handleFiles(files) {
             const fileList = document.getElementById('fileList');
             
@@ -784,6 +834,7 @@
             
             const sizeKB = (arrayBuffer.byteLength / 1024).toFixed(1);
             
+            // Convert to base64 for esptool-js
             const uint8Array = new Uint8Array(arrayBuffer);
             let binary = '';
             for (let i = 0; i < uint8Array.length; i++) {
@@ -795,14 +846,19 @@
             
             item.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span><strong>${file.name}</strong> (${sizeKB} KB)</span>
-                    <button class="btn" onclick="removeFile(this)" style="padding: 6px 12px;">✕</button>
+                    <span><i data-lucide="file" style="margin-right: 8px;"></i><strong>${file.name}</strong> (${sizeKB} KB)</span>
+                    <button class="btn" onclick="removeFile(this)" style="padding: 6px 12px;"><i data-lucide="x"></i></button>
                 </div>
                 <div class="address-group">
-                    <span>Адрес:</span>
+                    <span><i data-lucide="map-pin" style="margin-right: 4px;"></i>Адрес:</span>
                     <input type="text" class="address-input" value="0x10000" onchange="updateAddress(this)">
                 </div>
             `;
+            
+            // Re-initialize icons for this new content
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
             
             item.dataset.address = '0x10000';
             item.className = 'file-item glass-panel';
@@ -866,7 +922,13 @@
             logToTerminal('🔌 Отключено', 'info');
         }
 
+        // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            
             checkESPToolLibrary();
             
             if (!checkWebSerialSupport()) {
@@ -875,12 +937,14 @@
                 return;
             }
             
+            // File upload
             const fileUpload = document.getElementById('fileUpload');
             const fileInput = document.getElementById('fileInput');
             
             fileUpload.onclick = () => fileInput.click();
             fileInput.onchange = (e) => handleFiles(e.target.files);
             
+            // Drag and drop
             fileUpload.ondragover = (e) => {
                 e.preventDefault();
                 fileUpload.classList.add('drag-over');
@@ -895,17 +959,20 @@
                 fileUpload.classList.remove('drag-over');
                 handleFiles(e.dataTransfer.files);
             };
-
+            
+            // Advanced toggle
             document.getElementById('advancedToggle').onclick = () => {
                 const panel = document.getElementById('advancedPanel');
                 panel.classList.toggle('show');
             };
             
+            // Auto reset toggle
             document.getElementById('autoReset').onchange = (e) => {
                 const manualReset = document.getElementById('manualReset');
                 manualReset.style.display = e.target.checked ? 'none' : 'block';
             };
             
+            // Manual reset
             document.getElementById('manualReset').onclick = async () => {
                 if (port && port.setSignals) {
                     await autoEnterBootloader(port);
@@ -913,9 +980,11 @@
                     logToTerminal('🔧 Удерживайте BOOT (GPIO0), нажмите RESET (EN), отпустите RESET, отпустите BOOT', 'info');
                 }
             };
-
+            
+            // Flash button
             document.getElementById('flashBtn').onclick = flashFirmware;
             
+            // Connect button
             document.getElementById('connectBtn').onclick = connectToESP32;
             
             updateUI();
