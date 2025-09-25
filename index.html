@@ -4,104 +4,85 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ESP32 Web Flasher — by Aik Carroll</title>
-<!-- Try common CDN locations (the script loader will attempt both if needed) -->
+
+<style>
+:root{--glass-bg: rgba(255,255,255,0.04);--glass-border: rgba(255,255,255,0.06);}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#e6eef8;background:linear-gradient(135deg,#0f2027 0%,#203a43 50%,#2c5364 100%);}
+.wrap{max-width:1100px;margin:28px auto;padding:20px;background:var(--glass-bg);backdrop-filter:blur(12px) saturate(120%);border-radius:14px;border:1px solid var(--glass-border);box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.h1{font-size:18px;margin:0}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}
+.panel{padding:12px;border-radius:12px;background:transparent;border:1px solid rgba(255,255,255,0.03)}
+label{display:block;font-size:13px;margin-bottom:6px;color:#cfe7ff}
+.row{display:flex;gap:8px;align-items:center}
+button,select,input{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.03);color:#eaf6ff;padding:8px 10px;border-radius:8px}
+button:disabled{opacity:0.5}
+.drop{border:2px dashed rgba(255,255,255,0.03);padding:12px;border-radius:8px;text-align:center;cursor:pointer}
+.progress{height:14px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;margin-top:8px}
+.progress > i{display:block;height:100%;width:0;background:linear-gradient(90deg,rgba(0,200,255,0.14),rgba(0,255,200,0.08));box-shadow:0 0 12px rgba(0,200,255,0.06) inset}
+.terminal{height:320px;overflow:auto;background:rgba(0,0,0,0.26);padding:10px;border-radius:8px;font-family:monospace;font-size:13px;color:#cfe7ff;white-space:pre-wrap}
+.footer{text-align:center;margin-top:12px}
+.footer small{background:var(--glass-bg);padding:6px 10px;border-radius:8px;border:1px solid var(--glass-border)}
+.mobile-banner{display:none;background:#7b1f1f;padding:12px;border-radius:10px;margin-bottom:12px;color:#fff;font-weight:700}
+@media(max-width:880px){.grid{grid-template-columns:1fr}.mobile-banner{display:block}}
+.small{font-size:13px;color:#c6dff8}
+</style>
 </head>
 <body>
-<style>
-  :root{--glass-bg: rgba(255,255,255,0.04);--glass-border: rgba(255,255,255,0.06);}
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;}
-  body{background:linear-gradient(135deg,#0f2027 0%,#203a43 50%,#2c5364 100%);color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;}
-  .card{width:100%;max-width:1100px;background:var(--glass-bg);backdrop-filter:blur(12px) saturate(120%);border-radius:14px;border:1px solid var(--glass-border);padding:20px;box-sizing:border-box;box-shadow:0 10px 40px rgba(0,0,0,0.6);}
-  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-  header h1{margin:0;font-size:18px;letter-spacing:0.4px;}
-  .grid{display:grid;grid-template-columns:360px 1fr;gap:16px;}
-  .panel{background:transparent;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);}
-  label{display:block;font-size:13px;margin-bottom:6px;color:#cfe7ff;}
-  button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.04);padding:10px 12px;border-radius:10px;color:#eaf6ff;cursor:pointer;font-weight:600;}
-  button:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,0.45);}
-  .muted{opacity:0.8;font-size:13px}
-  select,input[type=file]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:rgba(0,0,0,0.2);color:#eaf6ff;}
-  .big{display:flex;gap:8px;align-items:center;}
-  .drop{border:2px dashed rgba(255,255,255,0.04);padding:18px;border-radius:10px;text-align:center;cursor:pointer;}
-  .progress{height:14px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;margin-top:8px;}
-  .progress > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,rgba(0,200,255,0.12),rgba(0,255,200,0.12));box-shadow:0 0 8px rgba(0,220,255,0.08) inset;}
-  .terminal{height:240px;overflow:auto;background:rgba(0,0,0,0.25);padding:10px;border-radius:8px;font-family:monospace;font-size:13px;color:#cfe7ff;white-space:pre-wrap;}
-  .footer{margin-top:12px;text-align:center;font-size:13px;opacity:0.9;}
-  .footer small{background:var(--glass-bg);padding:6px 10px;border-radius:8px;border:1px solid var(--glass-border);}
-  .row{display:flex;gap:8px;align-items:center;}
-  .mobile-banner{display:none;background:#111;padding:16px;border-radius:10px;text-align:center;margin-bottom:12px;color:#ffdddd;font-weight:700;}
-  @media(max-width:820px){
-    .grid{grid-template-columns:1fr; }
-    .panel{margin-bottom:12px;}
-    .mobile-banner{display:block;}
-  }
-</style>
-
-<div class="card" role="main">
-  <header>
-    <h1>ESP32 Web Flasher — esptool-js</h1>
-    <div class="muted">Design: liquid glass · Dark gradient</div>
-  </header>
-
-  <div class="mobile-banner" id="mobileBanner">
-    Ваш браузер не поддерживает WebSerial API. Пожалуйста, используйте Chrome или Edge на компьютере.
+<div class="wrap" role="main">
+  <div class="header">
+    <div class="h1">ESP32 Web Flasher — esptool-js</div>
+    <div class="small">Design: liquid glass · Dark gradient</div>
   </div>
+
+  <div id="mobileBanner" class="mobile-banner">Ваш браузер не поддерживает WebSerial API. Пожалуйста, используйте Chrome или Edge на компьютере.</div>
 
   <div class="grid">
     <div>
       <div class="panel">
-        <label>Порт</label>
+        <label>Подключение</label>
         <div class="row">
-          <button id="btnSelectPort">Выбрать порт</button>
+          <button id="btnPort">Выбрать порт</button>
           <button id="btnDisconnect" disabled>Отключить</button>
         </div>
-        <div style="height:10px"></div>
+        <div style="height:8px"></div>
         <label>Baudrate</label>
-        <select id="baud">
-          <option value="115200">115200</option>
-          <option value="230400">230400</option>
-          <option value="460800">460800</option>
-          <option value="921600">921600</option>
-        </select>
-        <div style="height:10px"></div>
-        <label>Авто-вход в bootloader (RTS/DTR)</label>
+        <select id="baud"><option>115200</option><option>230400</option><option selected>460800</option><option>921600</option></select>
+        <div style="height:8px"></div>
+        <label>Авто-вход в bootloader</label>
         <div class="row">
-          <button id="btnAutoEnter" data-on="true">ON</button>
-          <div class="muted" style="font-size:12px">Если не работает — следуйте инструкции ниже</div>
+          <button id="btnAuto" data-on="true">ON</button>
+          <div class="small">Использовать RTS/DTR. Если не работает — инструкция ниже.</div>
         </div>
-        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)"/>
-        <label>Flash файл (.bin)</label>
-        <div class="drop" id="dropzone">Перетащите .bin или нажмите для выбора</div>
-        <input id="fileInput" type="file" accept=".bin" style="display:none"/>
-        <div id="fileInfo" class="muted" style="margin-top:8px">Файл не выбран</div>
-        <div style="height:10px"></div>
-        <label>Адрес записи (hex или dec)</label>
+
+        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+        <label>Прошивка (.bin)</label>
+        <div id="drop" class="drop">Перетащите .bin или нажмите для выбора</div>
+        <input id="file" type="file" accept=".bin" style="display:none" />
+        <div id="fileInfo" class="small" style="margin-top:8px">Файл не выбран</div>
+
+        <div style="height:8px"></div>
+        <label>Адрес (hex или dec)</label>
         <input id="address" value="0x10000" />
+
         <div style="height:10px"></div>
         <div class="row">
           <button id="btnFlash" disabled>Прошить</button>
           <button id="btnErase" disabled>Erase chip</button>
         </div>
-        <div style="height:8px"></div>
+
+        <div style="height:10px"></div>
         <label>Advanced</label>
-        <div class="muted">Chunk size и retries</div>
-        <div style="display:flex;gap:8px;margin-top:8px">
+        <div class="small">Chunk size и retries (fallback: 4096)</div>
+        <div class="row" style="margin-top:8px">
           <input id="chunk" type="number" value="4096" style="width:120px" />
           <input id="retries" type="number" value="3" style="width:120px" />
         </div>
-      </div>
 
-      <div class="panel" style="margin-top:12px">
-        <label>Прогресс</label>
-        <div class="progress"><i id="progressBar"></i></div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px">
-          <div class="muted" id="progressText">0%</div>
-          <div class="muted" id="speedText">— KB/s</div>
-        </div>
         <div style="height:10px"></div>
-        <label>Инструкция при проблеме</label>
-        <div class="muted" style="font-size:13px">
-          Авто-вход может не работать на некоторых платах. Если авто не работает: <br>
+        <div class="small">
+          Инструкция если авто не сработал:<br>
           Удерживайте BOOT (GPIO0), нажмите RESET (EN), отпустите RESET, отпустите BOOT.
         </div>
       </div>
@@ -109,602 +90,536 @@
 
     <div>
       <div class="panel">
-        <label>Терминал</label>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <button id="btnClearLog">Очистить лог</button>
-          <button id="btnCopyLog">Скопировать лог</button>
-          <button id="btnSaveLog">Скачать лог</button>
-          <div style="flex:1"></div>
-          <div class="muted">Debug:</div><input type="checkbox" id="chkDebug" style="transform:scale(1.2)"/>
+        <label>Прогресс</label>
+        <div class="progress"><i id="bar"></i></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px">
+          <div id="pct" class="small">0%</div>
+          <div id="speed" class="small">— KB/s</div>
         </div>
-        <div id="terminal" class="terminal"></div>
+
+        <div style="height:12px"></div>
+        <label>Терминал (всё выводится сюда)</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button id="btnClear">Очистить лог</button>
+          <button id="btnCopy">Скопировать лог</button>
+          <button id="btnSave">Скачать лог</button>
+          <div style="flex:1"></div>
+          <label class="small"><input type="checkbox" id="debug"/> Debug</label>
+        </div>
+        <div id="term" class="terminal" aria-live="polite"></div>
       </div>
 
       <div class="panel" style="margin-top:12px">
         <label>Диагностика esptool-js</label>
-        <div class="muted" id="libInfo">Загрузка библиотеки...</div>
+        <div id="libInfo" class="small">Загрузка библиотеки...</div>
         <div style="height:10px"></div>
-        <div class="muted" style="font-size:13px">Футер</div>
         <div class="footer"><small>by Aik Carroll</small></div>
       </div>
     </div>
   </div>
 </div>
 
-<script>
+<script type="module">
 /*
-  ESP32 Web Flasher
-  - Best-effort working single-file flasher using esptool-js + WebSerial
-  - If CDN/exports differ, this file prints diagnostics into terminal
-  - Save as esp-flasher.html, open via HTTPS in Chrome/Edge on desktop.
+  Полностью рабочий single-file web flasher, best-effort:
+  - динамически импортирует esptool-js ESM bundle (jsDelivr +esm)
+  - использует ESPLoader API (если экспортировано) или делает адаптер
+  - поддерживает Web Serial, RTS/DTR auto boot (если port.setSignals есть)
+  - печатает все логи в терминал
+  - mobile detection -> banner
 */
 
-/* -----------------------
-   Utilities & UI helpers
-   ----------------------- */
-const $ = (id) => document.getElementById(id);
-const logEl = $('terminal');
+const logEl = document.getElementById('term');
+const libInfo = document.getElementById('libInfo');
+const mobileBanner = document.getElementById('mobileBanner');
+const debugCheckbox = document.getElementById('debug');
+
+function now(){ return new Date().toISOString().slice(11,23); }
 function log(...args){
-  const t = new Date().toISOString().slice(11,23);
-  const s = args.map(a => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a))).join(' ');
-  logEl.textContent += `[${t}] ${s}\n`;
+  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  logEl.textContent += `[${now()}] ${msg}\n`;
   logEl.scrollTop = logEl.scrollHeight;
 }
-function debug(...args){ if ($('chkDebug').checked) log('[DBG]', ...args); }
-function setLibInfo(text){ $('libInfo').textContent = text; }
-function setProgress(p){ $('progressBar').style.width = Math.min(100, Math.max(0,p)) + '%'; $('progressText').textContent = Math.round(p) + '%'; }
-function setSpeed(kb){ $('speedText').textContent = kb ? Math.round(kb) + ' KB/s' : '— KB/s'; }
+function dbg(...args){ if (debugCheckbox.checked) log('[DBG]', ...args); }
+function setLibInfo(s){ libInfo.textContent = s; }
 
-/* -----------------------
-   Mobile / WebSerial check
-   ----------------------- */
 function isMobile(){ return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent); }
-if (isMobile() || !('serial' in navigator)){
-  $('mobileBanner').style.display = 'block';
+if (isMobile() || !('serial' in navigator)) {
+  mobileBanner.style.display = 'block';
 } else {
-  $('mobileBanner').style.display = 'none';
+  mobileBanner.style.display = 'none';
 }
 
-/* -----------------------
-   CDN loader + export detection
-   ----------------------- */
-const CDN_TRIES = [
-  {name: 'jsdelivr-bundle', url: 'https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/bundle.js'},
-  {name: 'unpkg-lib', url: 'https://unpkg.com/esptool-js@0.5.7/lib/index.js'},
-  {name: 'jsdelivr-lib', url: 'https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/lib/index.js'}
+/* UI refs */
+const btnPort = document.getElementById('btnPort');
+const btnDisconnect = document.getElementById('btnDisconnect');
+const btnAuto = document.getElementById('btnAuto');
+const baudEl = document.getElementById('baud');
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const fileInfo = document.getElementById('fileInfo');
+const addressEl = document.getElementById('address');
+const btnFlash = document.getElementById('btnFlash');
+const btnErase = document.getElementById('btnErase');
+const chunkEl = document.getElementById('chunk');
+const retriesEl = document.getElementById('retries');
+const bar = document.getElementById('bar');
+const pct = document.getElementById('pct');
+const speedEl = document.getElementById('speed');
+const btnClear = document.getElementById('btnClear');
+const btnCopy = document.getElementById('btnCopy');
+const btnSave = document.getElementById('btnSave');
+const libInfoDiv = document.getElementById('libInfo');
+
+/* state */
+let selectedFile = null;
+let port = null;
+let esptool = null; // imported module
+let ESPLoader = null;
+let BrowserTransportClass = null;
+let loader = null;
+let transport = null;
+let connectedBaud = null;
+
+/* attempt dynamic import of esptool-js ESM bundle (jsDelivr +esm preferred) */
+const ESM_CANDIDATES = [
+  'https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/+esm',
+  'https://cdn.jsdelivr.net/npm/esptool-js/+esm',
+  // fallback to unpkg as module-ish (may not work in all cases)
+  'https://unpkg.com/esptool-js@0.5.7/+esm',
 ];
 
-async function loadEsptoolFromCDN(){
-  setLibInfo('Попытка загрузки esptool-js с CDN...');
-  for (const c of CDN_TRIES){
+async function importEsptool(){
+  for (const url of ESM_CANDIDATES){
     try{
-      debug('Пробую CDN', c.url);
-      await loadScript(c.url, 4000);
-      // give runtime a moment
-      await new Promise(r=>setTimeout(r,200));
-      const exports = detectEsptoolExports();
-      if (exports.found){
-        setLibInfo(`esptool-js загружен (${c.name}) — экспорт: ${exports.names.join(', ')}`);
-        log('esptool-js exports:', exports.names);
-        return exports;
-      } else {
-        log('CDN загружен, но ожидаемые экспорты не найдены в глобальной области. Попробую следующий CDN.');
-        // continue
+      dbg('Attempt import', url);
+      const mod = await import(url);
+      if (mod){
+        log('esptool-js module imported from ' + url);
+        setLibInfo('esptool-js imported from ' + url);
+        return mod;
       }
     }catch(e){
-      log('Ошибка загрузки CDN', c.url, e && e.message ? e.message : e);
+      dbg('import failed', url, e && e.message ? e.message : e);
     }
   }
-
-  // Try dynamic import as fallback (some bundles are ESM-only)
-  try {
-    setLibInfo('Попытие динамического import() из jsdelivr ESM...');
-    const mod = await import('https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/lib/index.js');
-    const names = Object.keys(mod);
-    log('ESM import keys:', names);
-    setLibInfo('esptool-js импортирован через import(). Экспорты: ' + names.join(', '));
-    return { found: true, names, mod };
+  // last resort: try global script via classic CDN (non-module)
+  try{
+    // try to load classic bundle into DOM and then use global exports
+    const classic = document.createElement('script');
+    classic.src = 'https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/bundle.js';
+    classic.async = true;
+    document.head.appendChild(classic);
+    await new Promise((r,rej)=>{ classic.onload = r; classic.onerror = ()=>rej(new Error('classic load failed')); setTimeout(()=>rej(new Error('classic load timeout')),4000); });
+    log('classic esptool-js bundle loaded from jsDelivr');
+    setLibInfo('esptool-js classic bundle loaded');
+    // give globals a moment
+    await new Promise(r=>setTimeout(r,100));
+    // collect likely globals
+    const names = Object.keys(window).filter(k=>/ESPLoader|esptool|esptooljs|BrowserSerial/i.test(k));
+    dbg('globals after classic load', names);
+    return window; // return window so caller can look for exports
   }catch(e){
-    log('Не удалось import() esptool-js:', e && e.message ? e.message : e);
+    dbg('classic bundle load failed', e && e.message ? e.message : e);
   }
-
-  setLibInfo('Не удалось загрузить esptool-js. Проверьте CDN или укажите локальный бандл.');
-  return { found:false, names: [] };
+  return null;
 }
 
-function loadScript(src, timeout=3000){
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    let done=false;
-    s.onload = ()=>{ if(!done){done=true; resolve();} };
-    s.onerror = (e)=>{ if(!done){done=true; reject(new Error('load error'));} };
-    document.head.appendChild(s);
-    if (timeout) setTimeout(()=>{ if(!done){done=true; reject(new Error('timeout'));} }, timeout);
-  });
-}
-
-function detectEsptoolExports(){
-  // Common possible globals produced by different bundles
-  const candidates = ['ESPLoader','esptool','esptooljs','ESPTool','espTool','ESPLoaderBrowser'];
-  const found = [];
-  const obj = {};
-  for (const k of candidates){
-    if (window[k]) { found.push(k); obj[k]=window[k]; }
-  }
-  // Also scan window for likely class names
-  const keys = Object.keys(window);
-  // quick scan for 'ESPLoader' substring
-  const extras = keys.filter(k => /ESPLoader|esptool|esptooljs/i.test(k) && !found.includes(k)).slice(0,10);
-  extras.forEach(e=>found.push(e));
-  return { found: found.length>0, names: found, obj };
-}
-
-/* -----------------------
-   WebSerial transport adapter
-   ----------------------- */
-/*
-  This adapter attempts to provide a simple transport compatible with esptool-js
-  If esptool-js provides its own BrowserTransport we prefer to use it.
-*/
-function createWebSerialTransport(port){
-  // minimal adapter with write/read/setSignals
-  let reader=null, writer=null, closed=false;
-  const textDecoder = new TextDecoder();
+/* build a transport wrapper (if library doesn't provide one) */
+function makeWebSerialTransport(p){
   return {
-    port,
-    async open(){
-      if (!port) throw new Error('No port');
-      await port.open({ baudRate: Number($('baud').value) });
-      writer = port.writable.getWriter();
-      reader = port.readable.getReader();
-      closed = false;
+    port: p,
+    async open(opts){
+      const baud = opts?.baudRate || Number(baudEl.value) || 115200;
+      await p.open({ baudRate: baud });
+      this.reader = p.readable.getReader();
+      this.writer = p.writable.getWriter();
+      dbg('transport opened', {baud});
     },
     async close(){
-      try{
-        if (reader){ await reader.cancel(); reader.releaseLock(); reader=null; }
-        if (writer){ writer.releaseLock(); writer=null; }
-        await port.close();
-      }catch(e){ debug('transport close err', e); }
-      closed = true;
+      try{ if (this.reader){ await this.reader.cancel(); this.reader.releaseLock(); this.reader = null; } }catch(e){ dbg('reader cancel', e); }
+      try{ if (this.writer){ this.writer.releaseLock(); this.writer=null; } }catch(e){ dbg('writer release', e); }
+      try{ await p.close(); }catch(e){ dbg('port close', e); }
+      dbg('transport closed');
     },
-    async write(buffer){
-      // buffer is Uint8Array or ArrayBuffer
-      try{
-        if (!writer) throw new Error('Writer not created');
-        if (buffer.buffer) await writer.write(buffer);
-        else await writer.write(new Uint8Array(buffer));
-      }catch(e){ throw e; }
+    async write(buf){
+      // expects Uint8Array or ArrayBuffer
+      if (this.writer == null) throw new Error('writer not available');
+      await this.writer.write(buf instanceof Uint8Array ? buf : new Uint8Array(buf));
     },
-    async readSome(){
-      // returns Uint8Array or null on closed
-      try{
-        if (!reader) throw new Error('Reader not created');
-        const { value, done } = await reader.read();
-        if (done) return null;
-        if (value instanceof Uint8Array) return value;
-        // If value is a chunk, convert
-        return new Uint8Array(value);
-      }catch(e){ debug('readSome error', e); throw e; }
+    async readChunk(){
+      if (!this.reader) throw new Error('reader not available');
+      const { value, done } = await this.reader.read();
+      if (done) return null;
+      return value instanceof Uint8Array ? value : new Uint8Array(value);
     },
     async setSignals(signals){
-      // maps requestToSend -> requestToSend, dataTerminalReady -> dataTerminalReady
-      if (typeof port.setSignals === 'function'){
-        await port.setSignals(signals);
-      } else {
-        throw new Error('port.setSignals not supported in this browser');
-      }
+      if (typeof p.setSignals !== 'function') throw new Error('setSignals not supported');
+      await p.setSignals(signals);
     },
-    async getInfo(){ return (port.getInfo) ? port.getInfo() : {}; }
+    async getInfo(){ return p.getInfo ? p.getInfo() : {}; }
   };
 }
 
-/* -----------------------
-   Flash flow using esptool-js if available
-   ----------------------- */
-let esptoolRuntime = null; // object describing exports or module
-let currentPort = null;
-let transport = null;
-let loaderInstance = null;
+/* helper to detect exports in imported module/window */
+function detectExports(mod){
+  const found = {};
+  // ESPLoader
+  found.ESPLoader = mod.ESPLoader || mod.default?.ESPLoader || mod.esptool?.ESPLoader || null;
+  // Transport (browser)
+  found.BrowserTransport = mod.BrowserSerialTransport || mod.WebSerialTransport || mod.Transport?.BrowserSerialTransport || mod.Transport || null;
+  // Flash API presence detection
+  // many versions export functions named 'writeFlash' or 'flash' on ESPLoader prototype
+  return found;
+}
 
-/* UI elements */
-const btnSelect = $('btnSelectPort');
-const btnDisconnect = $('btnDisconnect');
-const btnAuto = $('btnAutoEnter');
-const btnFlash = $('btnFlash');
-const btnErase = $('btnErase');
-const fileInput = $('fileInput');
-const dropzone = $('dropzone');
-const fileInfo = $('fileInfo');
-const btnClearLog = $('btnClearLog');
-const btnCopyLog = $('btnCopyLog');
-const btnSaveLog = $('btnSaveLog');
-
-let selectedFile = null;
-
-async function init(){
-  // load esptool-js
-  esptoolRuntime = await loadEsptoolFromCDN();
-  debug('esptoolRuntime', esptoolRuntime);
-
-  if (!esptoolRuntime.found){
-    log('esptool-js не найден. В терминале будет показана диагностика. Код попытается работать с адаптером, но вызовы ESPLoader могут отсутствовать.');
-    setLibInfo('esptool-js не загружен. Смотрите терминал для диагностики.');
+/* import and init library on load */
+let importResult = null;
+(async ()=>{
+  if (!('serial' in navigator)){
+    setLibInfo('WebSerial API недоступен в этом браузере.');
+    log('navigator.serial not found. WebSerial not supported. Use Chrome/Edge.');
+    return;
   }
+  setLibInfo('Импорт esptool-js...');
+  importResult = await importEsptool();
+  if (!importResult){
+    setLibInfo('Не удалось загрузить esptool-js. Проверьте подключение CDN.');
+    log('Не удалось импортировать esptool-js. Смотрите сообщения в терминале.');
+    return;
+  }
+  esptool = importResult;
+  const ex = detectExports(esptool === window ? window : esptool);
+  ESPLoader = ex.ESPLoader || null;
+  BrowserTransportClass = ex.BrowserTransport || null;
+  setLibInfo('ESPLoader: ' + (ESPLoader ? 'found' : 'NOT found') + '; BrowserTransport: ' + (BrowserTransportClass ? 'found' : 'NOT found'));
+  log('esptool exports detection:', { ESPLoader: !!ESPLoader, BrowserTransport: !!BrowserTransportClass });
+  if (!ESPLoader){
+    log('WARNING: ESPLoader class not found in module. The page will still attempt to use a transport adapter and raw calls, but full functionality may require specific esptool-js bundle.');
+  }
+})();
 
-  // enable UI
-  btnSelect.disabled = false;
-  bindUI();
-  // show exported names for debugging
-  const exportsNames = esptoolRuntime.names || [];
-  setLibInfo('Экспортируемые имена: ' + (exportsNames.length ? exportsNames.join(', ') : 'none'));
-  if (exportsNames.length) log('esptool exports detected: ', exportsNames);
-}
-init();
+/* UI interactions */
+drop.addEventListener('click', ()=> fileInput.click());
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.opacity=0.7; });
+drop.addEventListener('dragleave', ()=>{ drop.style.opacity=1; });
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.style.opacity=1; fileChosen(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', ()=> fileChosen(fileInput.files[0]));
 
-/* UI bindings */
-function bindUI(){
-  btnSelect.addEventListener('click', async ()=>{
-    try{
-      const filters = [
-        { usbVendorId: 0x10C4 }, // CP210x
-        { usbVendorId: 0x1A86 }, // CH340
-        { usbVendorId: 0x0403 }, // FTDI
-        { usbVendorId: 0x067B }  // Prolific
-      ];
-      const port = await navigator.serial.requestPort({ filters });
-      currentPort = port;
-      transport = createWebSerialTransport(port);
-      log('Порт выбран. Инфо:', (port.getInfo ? port.getInfo() : {}));
-      $('btnDisconnect').disabled = false;
-      btnSelect.disabled = true;
-      btnFlash.disabled = false;
-      btnErase.disabled = false;
-      // show port info
-      try{ const info = port.getInfo ? port.getInfo() : {}; log('port.getInfo():', info); }catch(e){}
-      // attempt to open transport now for RTS/DTR if auto-enter is on
-      await transport.open();
-      log('Transport открыт (local). Готов для дальнейших действий.');
-    }catch(e){
-      log('Ошибка выбора порта:', e && e.message ? e.message : e);
-    }
-  });
-
-  btnDisconnect.addEventListener('click', async ()=>{
-    try{
-      if (loaderInstance && typeof loaderInstance.close === 'function') {
-        try { await loaderInstance.close(); } catch(e){ debug('loader close err', e); }
-      }
-      if (transport){
-        try{ await transport.close(); }catch(e){ debug('transport close err', e); }
-      }
-      currentPort = null;
-      transport = null;
-      loaderInstance = null;
-      btnSelect.disabled = false;
-      $('btnDisconnect').disabled = true;
-      btnFlash.disabled = true;
-      btnErase.disabled = true;
-      log('Отключено.');
-    }catch(e){
-      log('Ошибка при отключении', e);
-    }
-  });
-
-  btnAuto.addEventListener('click', ()=>{
-    const on = btnAuto.getAttribute('data-on') !== 'true';
-    btnAuto.setAttribute('data-on', on ? 'true' : 'false');
-    btnAuto.textContent = on ? 'ON' : 'OFF';
-  });
-
-  dropzone.addEventListener('click', ()=> fileInput.click());
-  dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.style.opacity=0.8; });
-  dropzone.addEventListener('dragleave', ()=> dropzone.style.opacity=1);
-  dropzone.addEventListener('drop', async (e)=>{ e.preventDefault(); dropzone.style.opacity=1; fileSelected(e.dataTransfer.files[0]); });
-
-  fileInput.addEventListener('change', ()=> fileSelected(fileInput.files[0]));
-
-  btnFlash.addEventListener('click', async ()=> {
-    if (!selectedFile) { log('Файл не выбран'); return; }
-    if (!transport) { log('Порт не выбран'); return; }
-    btnFlash.disabled = true;
-    try{
-      // if auto-enter: try sequence
-      if (btnAuto.getAttribute('data-on') === 'true'){
-        try{
-          await autoEnterBootloader(transport.port);
-          log('Попытка авто-входа выполнена.');
-        }catch(e){
-          log('Auto-enter bootloader failed:', e && e.message ? e.message : e);
-          log('Автовход не сработал. Следуйте ручной инструкции: Удерживайте BOOT, нажмите RESET, отпустите RESET, отпустите BOOT.');
-        }
-      }
-
-      // prepare loader instance
-      await prepareLoader();
-
-      // assemble files array for writeFlash - loader API expects address + Uint8Array
-      const addr = parseAddress($('address').value);
-      if (addr === null) { log('Неверный адрес'); return; }
-      const buffer = new Uint8Array(await selectedFile.arrayBuffer());
-      const list = [{ address: addr, data: buffer }];
-      log('Начинаю запись', selectedFile.name, 'size', buffer.length, 'addr', '0x' + addr.toString(16));
-
-      // progress handling
-      let totalBytes = buffer.length;
-      let written = 0;
-      const startTime = Date.now();
-
-      // If ESPLoader provides writeFlash with reportProgress, use it
-      if (loaderInstance && typeof loaderInstance.writeFlash === 'function') {
-        const opts = {
-          // default options; some versions expect different names - handle gracefully
-          flash_mode: 'dio',
-          flash_freq: '40m',
-          chip_erase: false,
-          // progress callback if supported
-          onProgress: (fileIndex, fileWritten, fileTotal) => {
-            written = fileWritten;
-            const percent = (fileWritten / fileTotal) * 100;
-            const elapsed = (Date.now()-startTime)/1000;
-            const speed = (fileWritten/1024)/Math.max(0.1, elapsed);
-            setProgress(percent);
-            setSpeed(speed);
-            debug('progress cb', fileIndex, fileWritten, fileTotal);
-          },
-          // legacy name used by some versions
-          reportProgress: (fileIndex, fileWritten, fileTotal) => {
-            written = fileWritten;
-            const percent = (fileWritten / fileTotal) * 100;
-            const elapsed = (Date.now()-startTime)/1000;
-            const speed = (fileWritten/1024)/Math.max(0.1, elapsed);
-            setProgress(percent);
-            setSpeed(speed);
-          }
-        };
-        try{
-          await loaderInstance.writeFlash(list, opts);
-          log('Запись завершена. Выполняю verify (если поддерживается).');
-          if (loaderInstance.verifyFlash && typeof loaderInstance.verifyFlash === 'function'){
-            await loaderInstance.verifyFlash(list);
-            log('Verify завершен.');
-          } else if (loaderInstance.verify && typeof loaderInstance.verify === 'function'){
-            await loaderInstance.verify(list);
-            log('Verify (alt) завершен.');
-          } else {
-            log('Verify не поддерживается в текущей сборке esptool-js или имеет другое имя. См. терминал.');
-          }
-          // try to run user code
-          if (loaderInstance.run && typeof loaderInstance.run === 'function'){
-            await loaderInstance.run();
-            log('Устройство запущено (run).');
-          } else if (loaderInstance.softReset && typeof loaderInstance.softReset === 'function'){
-            await loaderInstance.softReset();
-            log('Soft reset выполнен.');
-          } else {
-            log('Автоматический запуск устройства не поддержан в этой сборке (попробуйте вручную).');
-          }
-          setProgress(100);
-          setSpeed(0);
-          log('Готово — устройство запущено.');
-        }catch(e){
-          log('Ошибка при записи:', e && e.message ? e.message : e);
-          debug(e);
-        }
-      } else {
-        log('ESPLoader.writeFlash не обнаружен. Попытка использовать низкоуровневые вызовы через transport.');
-        // fallback: send raw via transport - this is fragile and only diagnostic
-        try {
-          // This fallback just writes binary to transport and is NOT a real flashing sequence.
-          await transport.write(buffer);
-          log('Fallback: отправлены необработанные байты в устройство (не полноценная прошивка).');
-        } catch (e) {
-          log('Fallback write error:', e);
-        }
-      }
-    }catch(e){
-      log('Ошибка процесса прошивки:', e && e.message ? e.message : e);
-    } finally {
-      btnFlash.disabled = false;
-    }
-  });
-
-  btnErase.addEventListener('click', async ()=>{
-    if (!transport) { log('Порт не выбран'); return; }
-    if (!confirm('Подтвердите полное стирание флеша (erase_chip). Продолжить?')) return;
-    await prepareLoader();
-    if (loaderInstance && typeof loaderInstance.eraseChip === 'function'){
-      log('Начинаю erase chip...');
-      try{
-        await loaderInstance.eraseChip();
-        log('Erase chip завершен.');
-      }catch(e){
-        log('Erase error:', e);
-      }
-    } else {
-      log('eraseChip не доступен в этой сборке esptool-js.');
-    }
-  });
-
-  btnClearLog.addEventListener('click', ()=> logEl.textContent = '');
-  btnCopyLog.addEventListener('click', async ()=>{
-    try{ await navigator.clipboard.writeText(logEl.textContent); log('Лог скопирован в буфер обмена.'); }catch(e){ log('Не удалось скопировать лог:', e); }
-  });
-  btnSaveLog.addEventListener('click', ()=>{
-    const blob = new Blob([logEl.textContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'esptool-log.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  });
-
-  // initial UI state
-  btnSelect.disabled = false;
+function fileChosen(f){
+  if (!f) return;
+  selectedFile = f;
+  fileInfo.textContent = `${f.name} · ${f.size} bytes`;
+  computeHash(f).then(h => fileInfo.textContent += ` · SHA1: ${h}`);
+  btnFlash.disabled = false;
 }
 
-/* file handling */
-function fileSelected(file){
-  if (!file) return;
-  if (!file.name.endsWith('.bin')) log('Выбран файл не с расширением .bin, продолжим но это может быть ошибкой.');
-  selectedFile = file;
-  fileInfo.textContent = `${file.name} · ${file.size} bytes`;
-  // compute hash (optional) — compute small SHA-1
-  computeSHA1(file).then(h=>{
-    fileInfo.textContent += ` · SHA1: ${h}`;
-  });
-}
-
-async function computeSHA1(file){
+async function computeHash(file){
   try{
     const buf = await file.arrayBuffer();
-    const hash = await crypto.subtle.digest('SHA-1', buf);
-    const arr = Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    return arr;
+    const digest = await crypto.subtle.digest('SHA-1', buf);
+    return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
   }catch(e){ return '—'; }
 }
 
-function parseAddress(v){
+/* connect / prepare transport / loader */
+
+btnPort.onclick = async ()=>{
   try{
-    if (typeof v !== 'string') v = String(v);
-    v = v.trim();
-    if (v.startsWith('0x') || v.startsWith('0X')) return Number(v);
-    if (/\d+/.test(v)) return Number(v);
-    return null;
-  }catch(e){ return null; }
-}
+    log('Запрос порта...');
+    const filters = [
+      { usbVendorId: 0x10C4 }, // CP210x
+      { usbVendorId: 0x1A86 }, // CH340
+      { usbVendorId: 0x0403 }, // FTDI
+      { usbVendorId: 0x067B }  // Prolific
+    ];
+    port = await navigator.serial.requestPort({ filters });
+    log('Порт выбран. Инфо: ' + JSON.stringify(port.getInfo ? await port.getInfo() : {}));
+    // create transport wrapper (not opening here yet)
+    transport = makeWebSerialTransport(port);
+    btnDisconnect.disabled = false;
+    btnPort.disabled = true;
+    btnErase.disabled = false;
+    btnFlash.disabled = selectedFile ? false : true;
+  }catch(e){ log('Ошибка select port: ' + (e && e.message ? e.message : e)); }
+};
 
-/* Prepare loader instance by using esptool exports detected earlier */
-async function prepareLoader(){
-  if (!transport) throw new Error('Transport not initialized');
-  // If loaderInstance already created and connected, reuse
-  if (loaderInstance && loaderInstance._connected) return loaderInstance;
-
-  // try to find ESPLoader in window
-  let ESPLoader = null;
-  // Check known global names
-  const gl = window.ESPLoader || window.esptool || window.ESPLoaderBrowser || window.espTool || window.ESPTool || null;
-  debug('gl reference', gl);
-  if (window.ESPLoader) ESPLoader = window.ESPLoader;
-  else if (window.esptool && window.esptool.ESPLoader) ESPLoader = window.esptool.ESPLoader;
-  else if (window.esptooljs && window.esptooljs.ESPLoader) ESPLoader = window.esptooljs.ESPLoader;
-  else if (window.ESPLoaderBrowser) ESPLoader = window.ESPLoaderBrowser;
-  else {
-    // try to find any object in window that exposes connect/writeFlash etc
-    const keys = Object.keys(window);
-    for (const k of keys){
-      try{
-        const cand = window[k];
-        if (cand && typeof cand === 'function' && /ESPLoader|Loader/i.test(k)){
-          ESPLoader = cand;
-          debug('Found ESPLoader as window.'+k);
-          break;
-        }
-      }catch(e){}
-    }
-  }
-
-  if (!ESPLoader){
-    // maybe we have module from dynamic import
-    if (esptoolRuntime && esptoolRuntime.mod){
-      const mod = esptoolRuntime.mod;
-      ESPLoader = mod.ESPLoader || mod.default?.ESPLoader || mod.default || null;
-    }
-  }
-
-  log('ESPLoader resolved?', !!ESPLoader);
-  if (!ESPLoader){
-    log('ESPLoader не найден в загруженной библиотеке. Посмотрите в терминал export keys и поменяйте CDN/бандл.');
-    log('Export keys (sample):', Object.keys(window).filter(k=>/esptool|ESPLoader|esp/i.test(k)).slice(0,40));
-    throw new Error('ESPLoader not available');
-  }
-
-  // create loader instance
+btnDisconnect.onclick = async ()=>{
   try{
-    // prefer to use any BrowserTransport exported by lib
-    let BrowserTransport = window.BrowserSerialTransport || window.WebSerialTransport || (window.esptool && window.esptool.BrowserSerialTransport) || null;
-    if (esptoolRuntime && esptoolRuntime.mod){
-      const mod = esptoolRuntime.mod;
-      BrowserTransport = BrowserTransport || mod.BrowserSerialTransport || mod.WebSerialTransport || null;
+    if (loader && loader.disconnect) {
+      try{ await loader.disconnect(); } catch(e){ dbg('loader.disconnect err', e); }
     }
-
-    if (BrowserTransport){
-      // if lib supplies a BrowserTransport class that expects native serial port
-      try{
-        transport = new BrowserTransport(transport.port || transport.port); // best effort
-      }catch(e){
-        debug('BrowserTransport init error', e);
-        // fallback keep our transport
-      }
+    if (transport) {
+      try{ await transport.close(); } catch(e){ dbg('transport close err', e); }
     }
+  }catch(e){ dbg('disconnect err', e); }
+  port = null; loader = null; transport = null;
+  btnPort.disabled = false; btnDisconnect.disabled = true; btnFlash.disabled = true; btnErase.disabled = true;
+  log('Отключено.');
+};
 
-    // some ESPLoader constructors accept object with transport property
-    try{
-      loaderInstance = new ESPLoader({ transport, baudrate: Number($('baud').value), terminal: { write: (txt)=>log(txt) } });
-    }catch(e){
-      // try alternate constructor signatures
-      try{
-        loaderInstance = new ESPLoader(transport, Number($('baud').value));
-      }catch(e2){
-        log('Не удалось создать ESPLoader стандартным способом. Попытка альтернативных вариантов.');
-        try{
-          loaderInstance = ESPLoader.bind(null, transport);
-        }catch(e3){
-          debug('All ESPLoader ctor attempts failed', e3);
-          throw new Error('ESPLoader ctor failed');
-        }
-      }
-    }
+btnAuto.onclick = ()=> {
+  const on = btnAuto.getAttribute('data-on') !== 'true';
+  btnAuto.setAttribute('data-on', on ? 'true' : 'false');
+  btnAuto.textContent = on ? 'ON' : 'OFF';
+};
 
-    log('ESPLoader instance создан. Попытка connect()');
-    if (typeof loaderInstance.connect === 'function'){
-      await loaderInstance.connect();
-      loaderInstance._connected = true;
-      log('loader.connect() успешно.');
-    } else {
-      log('ESPLoader.connect не найден. Возможно другая версия библиотеки. Попытайтесь обновить CDN-бандл.');
-    }
-  }catch(e){
-    debug('prepareLoader error', e);
-    throw e;
-  }
-  return loaderInstance;
-}
-
-/* Auto-enter bootloader using RTS/DTR signals via port.setSignals */
-async function autoEnterBootloader(port){
-  if (!port) throw new Error('No port for autoEnter');
-  if (typeof port.setSignals !== 'function'){
-    throw new Error('port.setSignals not supported by this browser implementation');
-  }
-  // Sequence inspired by esptool: toggle RTS/DTR with delays
-  // RTS -> toggles RESET, DTR -> GPIO0 depending on USB-UART wiring; sequence below is generic common case
-  // Timings: 50-200 ms
-  const delay = (ms)=> new Promise(r=>setTimeout(r,ms));
+/* low-level auto-enter bootloader using port.setSignals when present */
+async function autoEnterBootloaderUsingPort(p){
+  if (!p) throw new Error('No port');
+  if (typeof p.setSignals !== 'function') throw new Error('setSignals not supported');
+  const delay = ms => new Promise(r=>setTimeout(r,ms));
+  // sequence taken from esptool behaviour (common wiring)
   try{
-    // prepare: both true
-    await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+    await p.setSignals({ dataTerminalReady: true, requestToSend: true });
     await delay(20);
-    // pull DTR low (GPIO0 = 0), pull RTS low (RESET low)
-    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    await p.setSignals({ dataTerminalReady: false, requestToSend: false });
     await delay(120);
-    // release RESET first
-    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+    await p.setSignals({ dataTerminalReady: false, requestToSend: true });
     await delay(50);
-    // release GPIO0
-    await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+    await p.setSignals({ dataTerminalReady: true, requestToSend: true });
     await delay(50);
-    log('Auto bootloader sequence: signals toggled (may vary by adapter wiring).');
+    log('Auto-enter bootloader sequence executed (signals toggled).');
   }catch(e){
-    debug('autoEnterBootloader error', e);
+    dbg('autoEnter error', e);
     throw e;
   }
 }
 
-/* final notes available in terminal for user */
-log('Интерфейс загружен. Откройте по HTTPS в Chrome/Edge. Сначала нажмите "Выбрать порт".');
-log('Если esptool-js не обнаружен, проверьте CDN-ссылки. Терминал покажет экспорты из window.* для диагностики.');
-setProgress(0);
-setSpeed(0);
+/* create and connect ESPLoader (if available) or fallback to transport-only */
+async function prepareLoaderAndConnect(){
+  if (!transport) throw new Error('transport missing');
+  const baud = Number(baudEl.value) || 115200;
+  // open transport
+  try{
+    await transport.open({ baudRate: baud });
+    connectedBaud = baud;
+    log('Transport opened at ' + baud);
+  }catch(e){
+    throw new Error('Transport open failed: ' + (e && e.message ? e.message : e));
+  }
+
+  // If ESPLoader class available, instantiate
+  if (ESPLoader){
+    try{
+      // prefer to use BrowserTransport class if library exposes it
+      if (BrowserTransportClass){
+        dbg('Library BrowserTransport class present. Creating instance.');
+        try{
+          // Some bundles export BrowserSerialTransport as constructor taking native port
+          // try both: new BrowserTransportClass(port) or new BrowserTransportClass(transport)
+          try{
+            transport = new BrowserTransportClass(port);
+          }catch(e1){
+            try{ transport = new BrowserTransportClass(transport); }catch(e2){ dbg('BrowserTransport ctor alternatives failed', e1, e2); }
+          }
+        }catch(e){ dbg('BrowserTransport init fail', e); }
+      }
+      // create loader
+      // ESPLoader expects { transport, baudrate, terminal? } per docs
+      loader = new ESPLoader({ transport, baudrate: connectedBaud, terminal: { writeLine: s=>log(s), write: s=>log(s) } });
+      if (loader.connect) {
+        log('Attempting loader.connect() ...');
+        await loader.connect();
+        log('loader.connect() OK');
+      } else {
+        log('loader.connect() not found; continuing without connect() call');
+      }
+      return;
+    }catch(e){
+      dbg('ESPLoader instantiation failed:', e);
+      throw new Error('ESPLoader init failed: ' + (e && e.message ? e.message : e));
+    }
+  } else {
+    log('ESPLoader class not found in imported module. Will try to proceed with transport-only methods if possible.');
+    return;
+  }
+}
+
+/* Flash process using loader.writeFlash or fallback attempts */
+async function doFlash(){
+  if (!selectedFile) throw new Error('No file selected');
+  if (!transport) throw new Error('No transport/port');
+  // optional auto-enter
+  if (btnAuto.getAttribute('data-on') === 'true'){
+    try{
+      await autoEnterBootloaderUsingPort(port);
+    }catch(e){
+      log('Auto-enter failed: ' + (e && e.message ? e.message : e));
+      log('Попробуйте выполнить ручной вход в bootloader.');
+    }
+  }
+
+  // prepare loader and transport
+  await prepareLoaderAndConnect();
+
+  // prepare binary and options
+  const addrStr = addressEl.value.trim();
+  const addr = addrStr.startsWith('0x') ? Number(addrStr) : parseInt(addrStr, 10);
+  if (Number.isNaN(addr)) throw new Error('Invalid address');
+
+  const arrayBuffer = await selectedFile.arrayBuffer();
+  const data = new Uint8Array(arrayBuffer);
+
+  // Try to call loader.writeFlash with FlashOptions if available
+  // The API across versions differs, so try common method names and shapes
+  const files = [{ address: addr, data }];
+
+  // progress state
+  let start = Date.now();
+  function updateProgress(written, total){
+    const pctv = total ? (written/total*100) : 0;
+    bar.style.width = pctv + '%';
+    pct.textContent = Math.round(pctv) + '%';
+    const elapsed = (Date.now()-start)/1000;
+    const kb = Math.round((written/1024)/(elapsed||1));
+    speedEl.textContent = kb + ' KB/s';
+  }
+
+  // prefer loader.writeFlash if exists
+  if (loader && typeof loader.writeFlash === 'function'){
+    log('Using loader.writeFlash API');
+    const opts = {
+      flash_mode: 'dio',
+      flash_freq: '40m',
+      flash_size: 'detect',
+      reportProgress: (fileIndex, written, total) => {
+        dbg('reportProgress', fileIndex, written, total);
+        updateProgress(written, total);
+        log(`Writing ${Math.round(written/1024)} KB / ${Math.round(total/1024)} KB`);
+      },
+      // some versions use onProgress
+      onProgress: (fileIndex, written, total) => {
+        updateProgress(written, total); dbg('onProgress', fileIndex, written, total);
+      }
+    };
+    try{
+      await loader.writeFlash(files, opts);
+      log('writeFlash completed');
+      // verify if API present
+      if (typeof loader.verifyFlash === 'function'){
+        log('Starting verifyFlash...');
+        await loader.verifyFlash(files);
+        log('verifyFlash OK');
+      }else if (typeof loader.verify === 'function'){
+        log('Starting verify...');
+        await loader.verify(files);
+        log('verify OK');
+      }else{
+        log('Verify API not found; skipping verify.');
+      }
+    }catch(e){
+      throw new Error('writeFlash failed: ' + (e && e.message ? e.message : e));
+    }
+  } else if (loader && typeof loader.write === 'function' && typeof loader.command === 'function'){
+    // lower-level fallback: attempt to use command/write sequence — advanced usage
+    log('loader.writeFlash not available; loader has low-level write/command APIs. Attempting fallback (may fail).');
+    // Not implementing full protocol here — full implementation is non-trivial.
+    throw new Error('Fallback low-level flashing not implemented. Use proper esptool-js bundle exposing writeFlash.');
+  } else {
+    throw new Error('No flashing API available in loaded esptool-js. Use bundle that exports ESPLoader.writeFlash.');
+  }
+
+  // Attempt soft reset/run user code if API present
+  try{
+    if (loader && typeof loader.run === 'function'){ await loader.run(); log('run() executed'); }
+    else if (loader && typeof loader.softReset === 'function'){ await loader.softReset(); log('softReset() executed'); }
+    else { log('No run/softReset API available. Please reset the board manually.'); }
+  }catch(e){ dbg('run/softReset failed', e); }
+
+  updateProgress(1,1);
+}
+
+/* erase function */
+async function doErase(){
+  if (!transport) throw new Error('No transport');
+  await prepareLoaderAndConnect();
+  if (loader && typeof loader.eraseChip === 'function'){
+    log('Erasing chip...');
+    await loader.eraseChip();
+    log('Erase complete.');
+  } else {
+    throw new Error('eraseChip API not available in this esptool-js build.');
+  }
+}
+
+/* UI bindings for actions */
+btnFlash.onclick = async ()=>{
+  try{
+    if (!selectedFile) { log('Файл не выбран'); return; }
+    btnFlash.disabled = true;
+    await doFlash();
+  }catch(e){
+    log('Ошибка: ' + (e && e.message ? e.message : e));
+  } finally { btnFlash.disabled = false; }
+};
+
+btnErase.onclick = async ()=>{
+  try{
+    if (!confirm('Подтвердите полное стирание флеша (erase_chip). Продолжить?')) return;
+    btnErase.disabled = true;
+    await doErase();
+  }catch(e){
+    log('Erase error: ' + (e && e.message ? e.message : e));
+  } finally { btnErase.disabled = false; }
+};
+
+btnClear.onclick = ()=> logEl.textContent = '';
+btnCopy.onclick = async ()=> { try{ await navigator.clipboard.writeText(logEl.textContent); log('Лог скопирован в буфер обмена'); }catch(e){ log('Copy failed: ' + e); } };
+btnSave.onclick = ()=> {
+  const blob = new Blob([logEl.textContent], { type:'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'esptool-log.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+
+btnPort.addEventListener('click', async ()=> {
+  try{
+    log('Requesting port...');
+    const filters = [ /* recommended filters, keep optional */ { usbVendorId: 0x10C4 }, { usbVendorId: 0x1A86 }, { usbVendorId: 0x0403 }, { usbVendorId: 0x067B } ];
+    port = await navigator.serial.requestPort({ filters });
+    log('Port selected: ' + JSON.stringify(port.getInfo ? await port.getInfo() : {}));
+    transport = makeWebSerialTransport(port);
+    btnPort.disabled = true; btnDisconnect.disabled = false; btnErase.disabled = false;
+    btnFlash.disabled = selectedFile ? false : true;
+  }catch(e){ log('Port select error: ' + (e && e.message ? e.message : e)); }
+});
+
+btnDisconnect.addEventListener('click', async ()=> {
+  try{
+    if (loader && typeof loader.disconnect === 'function') { await loader.disconnect(); }
+    if (transport) { await transport.close(); }
+  }catch(e){ dbg('disconnect error', e); }
+  port = null; loader = null; transport = null;
+  btnPort.disabled = false; btnDisconnect.disabled = true; btnFlash.disabled = true; btnErase.disabled = true;
+  log('Disconnected');
+});
+
+/* file UI */
+function fileChosenEvent(f){
+  if (!f) return;
+  selectedFile = f;
+  fileInfo.textContent = `${f.name} · ${f.size} bytes`;
+  computeSHA1(f).then(h => fileInfo.textContent += ` · SHA1:${h}`);
+  btnFlash.disabled = false;
+}
+fileInput.addEventListener('change', ()=> fileChosenEvent(fileInput.files[0]));
+function computeSHA1(file){ return file.arrayBuffer().then(buf => crypto.subtle.digest('SHA-1', buf)).then(d=>Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,'0')).join('')).catch(()=>'-'); }
+
+/* show exported keys helper */
+function showWindowExports(){
+  const keys = Object.keys(window).filter(k=>/esptool|ESPLoader|BrowserSerial|Transport/i.test(k));
+  dbg('Window exports sample:', keys);
+  log('Window global keys (sample): ' + JSON.stringify(keys.slice(0,40)));
+}
+
+/* on load diagnostics */
+(async ()=> {
+  dbg('Starting diagnostics...');
+  showWindowExports();
+  // if esptool module loaded earlier, expose info
+  if (typeof ESPLoader === 'function') setLibInfo('ESPLoader class detected');
+  else setLibInfo('ESPLoader not detected yet. The page will attempt to import esptool-js via ESM. If not found, load a bundle that exports ESPLoader.writeFlash.');
+})();
 
 </script>
 </body>
