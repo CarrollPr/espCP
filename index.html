@@ -535,15 +535,16 @@ class WebSerialTransportAdapter {
 
     async close() {
         if (this.reader) {
-            await this.reader.releaseLock();
+            try { await this.reader.cancel(); } catch(_) {}
+            this.reader.releaseLock();
             this.reader = null;
         }
         if (this.writer) {
-            await this.writer.releaseLock();
+            this.writer.releaseLock();
             this.writer = null;
         }
         if (this.port) {
-            await this.port.close();
+            try { await this.port.close(); } catch(_) {}
         }
         terminal.writeLine('INFO Port closed');
     }
@@ -559,22 +560,28 @@ class WebSerialTransportAdapter {
     async read(timeout = 3000) {
         if (!this.reader) throw new Error('Port not open for reading');
         
+        const readPromise = this.reader.read();
         const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Read timeout')), timeout)
         );
         
-        const readPromise = this.reader.read();
-        const result = await Promise.race([readPromise, timeoutPromise]);
-        
-        if (result.done) {
-            throw new Error('Port closed');
+        try {
+            const result = await Promise.race([readPromise, timeoutPromise]);
+            
+            if (result.done) {
+                throw new Error('Port closed');
+            }
+            
+            if (document.getElementById('debug-mode').checked) {
+                terminal.writeLine('DEBUG RX: ' + Array.from(result.value).map(b => b.toString(16).padStart(2, '0')).join(' '));
+            }
+            
+            return result.value;
+        } catch(e) {
+            // cancel pending read so stream won't hang
+            try { await this.reader.cancel(); } catch(_) {}
+            throw e;
         }
-        
-        if (document.getElementById('debug-mode').checked) {
-            terminal.writeLine('DEBUG RX: ' + Array.from(result.value).map(b => b.toString(16).padStart(2, '0')).join(' '));
-        }
-        
-        return result.value;
     }
 
     async setSignals(signals) {
@@ -633,10 +640,6 @@ function updateProgress(percentage, speed = '', eta = '') {
 
 // File handling
 function handleFiles(fileList) {
-    files = [];
-    const fileListEl = document.getElementById('file-list');
-    fileListEl.innerHTML = '';
-
     Array.from(fileList).forEach((file, index) => {
         if (!file.name.endsWith('.bin')) {
             terminal.writeLine('ERROR Only .bin files are supported: ' + file.name);
@@ -646,10 +649,13 @@ function handleFiles(fileList) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const data = new Uint8Array(e.target.result);
+            
+            // Use predefined addresses to avoid conflicts
+            const defaultAddrs = [0x1000, 0x8000, 0x10000];
             const fileObj = {
                 name: file.name,
                 data: data,
-                address: index === 0 ? 0x10000 : 0x8000 + (index * 0x8000)
+                address: defaultAddrs[files.length] ?? (0x10000 + files.length * 0x10000)
             };
             
             files.push(fileObj);
@@ -659,48 +665,72 @@ function handleFiles(fileList) {
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
                 const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                 
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'file-item';
-                fileDiv.innerHTML = `
-                    <div>
-                        <strong>${file.name}</strong><br>
-                        Size: ${data.length} bytes, SHA-1: ${hashHex.substring(0, 16)}...
-                    </div>
-                    <div>
-                        <input type="text" value="0x${fileObj.address.toString(16)}" 
-                               style="width: 100px; margin-right: 10px;"
-                               onchange="updateFileAddress(${files.length - 1}, this.value)">
-                        <button onclick="removeFile(${files.length - 1})">Remove</button>
-                    </div>
-                `;
-                fileListEl.appendChild(fileDiv);
-                
-                document.getElementById('flash-btn').disabled = false;
                 terminal.writeLine(`INFO Loaded ${file.name} (${data.length} bytes) at 0x${fileObj.address.toString(16)}`);
+                renderFileList();
+                updateUIState();
             });
         };
         reader.readAsArrayBuffer(file);
     });
 }
 
-window.updateFileAddress = (index, value) => {
+function renderFileList() {
+    const fileListEl = document.getElementById('file-list');
+    fileListEl.innerHTML = '';
+    
+    files.forEach((file, index) => {
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'file-item';
+        fileDiv.dataset.index = index;
+        
+        fileDiv.innerHTML = `
+            <div>
+                <strong>${file.name}</strong><br>
+                Size: ${file.data.length} bytes
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" value="0x${file.address.toString(16)}" 
+                       style="width: 100px;" class="address-input">
+                <button class="remove-btn">Remove</button>
+            </div>
+        `;
+        
+        // Add event listeners
+        const addressInput = fileDiv.querySelector('.address-input');
+        addressInput.addEventListener('change', (e) => {
+            updateFileAddress(index, e.target.value);
+        });
+        
+        const removeBtn = fileDiv.querySelector('.remove-btn');
+        removeBtn.addEventListener('click', () => {
+            removeFile(index);
+        });
+        
+        fileListEl.appendChild(fileDiv);
+    });
+}
+
+function updateUIState() {
+    document.getElementById('flash-btn').disabled = files.length === 0 || !isConnected;
+}
+
+function updateFileAddress(index, value) {
     const address = parseInt(value, value.startsWith('0x') ? 16 : 10);
-    if (!isNaN(address)) {
+    if (!isNaN(address) && files[index]) {
         files[index].address = address;
         terminal.writeLine(`INFO Updated ${files[index].name} address to 0x${address.toString(16)}`);
     }
-};
+}
 
-window.removeFile = (index) => {
-    const fileName = files[index].name;
-    files.splice(index, 1);
-    document.getElementById('file-list').children[index].remove();
-    terminal.writeLine(`INFO Removed ${fileName}`);
-    
-    if (files.length === 0) {
-        document.getElementById('flash-btn').disabled = true;
+function removeFile(index) {
+    if (files[index]) {
+        const fileName = files[index].name;
+        files.splice(index, 1);
+        terminal.writeLine(`INFO Removed ${fileName}`);
+        renderFileList();
+        updateUIState();
     }
-};
+}
 
 // Initialize
 async function init() {
@@ -711,8 +741,28 @@ async function init() {
 
     try {
         const espModule = await loadESPTool();
-        window.espModule = espModule;
+        
+        // Enhanced API detection with fallbacks
+        const mod = espModule === window ? window : espModule;
+        const ESPLoader = mod.ESPLoader || mod.ESPLoaderBrowser || mod.default?.ESPLoader || mod.default || null;
+        
+        if (!ESPLoader) {
+            throw new Error('ESPLoader not found. Available exports: ' + Object.keys(mod).join(', '));
+        }
+        
+        // Create adapter for different method names
+        if (ESPLoader.prototype && !ESPLoader.prototype.writeFlash) {
+            if (typeof ESPLoader.prototype.write_flash === 'function') {
+                ESPLoader.prototype.writeFlash = ESPLoader.prototype.write_flash;
+            }
+            if (typeof ESPLoader.prototype.flash === 'function') {
+                ESPLoader.prototype.writeFlash = ESPLoader.prototype.flash;
+            }
+        }
+        
+        window.espModule = { ...espModule, ESPLoader };
         terminal.writeLine('INFO esptool-js loaded successfully');
+        terminal.writeLine('DEBUG Available methods: ' + Object.getOwnPropertyNames(ESPLoader.prototype).filter(m => m.includes('flash') || m.includes('erase') || m.includes('write')).join(', '));
     } catch (error) {
         terminal.writeLine('ERROR ' + error.message);
         return;
@@ -779,9 +829,9 @@ async function init() {
             isConnected = true;
             document.getElementById('connect-btn').disabled = true;
             document.getElementById('disconnect-btn').disabled = false;
-            document.getElementById('flash-btn').disabled = files.length === 0;
             document.getElementById('erase-btn').disabled = false;
             document.getElementById('reset-btn').disabled = false;
+            updateUIState();
             
             terminal.writeLine('SUCCESS Connected to ESP32');
             
@@ -803,9 +853,9 @@ async function init() {
             loader = null;
             document.getElementById('connect-btn').disabled = false;
             document.getElementById('disconnect-btn').disabled = true;
-            document.getElementById('flash-btn').disabled = true;
             document.getElementById('erase-btn').disabled = true;
             document.getElementById('reset-btn').disabled = true;
+            updateUIState();
             
             terminal.writeLine('INFO Disconnected');
         } catch (error) {
