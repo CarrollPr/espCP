@@ -525,6 +525,12 @@ class WebSerialTransportAdapter {
         this.writer = null;
     }
 
+    // ESPLoader requires connect method
+    async connect() {
+        // Connect is handled by open(), this is just a compatibility method
+        terminal.writeLine('DEBUG Transport connect() called');
+    }
+
     async open(options = {}) {
         const baudRate = options.baudRate || 115200;
         await this.port.open({ baudRate });
@@ -751,12 +757,38 @@ async function init() {
         }
         
         // Create adapter for different method names
-        if (ESPLoader.prototype && !ESPLoader.prototype.writeFlash) {
-            if (typeof ESPLoader.prototype.write_flash === 'function') {
-                ESPLoader.prototype.writeFlash = ESPLoader.prototype.write_flash;
+        if (ESPLoader.prototype) {
+            // Flash methods
+            if (!ESPLoader.prototype.writeFlash) {
+                if (typeof ESPLoader.prototype.write_flash === 'function') {
+                    ESPLoader.prototype.writeFlash = ESPLoader.prototype.write_flash;
+                }
+                if (typeof ESPLoader.prototype.flash === 'function') {
+                    ESPLoader.prototype.writeFlash = ESPLoader.prototype.flash;
+                }
             }
-            if (typeof ESPLoader.prototype.flash === 'function') {
-                ESPLoader.prototype.writeFlash = ESPLoader.prototype.flash;
+            
+            // Erase methods
+            if (!ESPLoader.prototype.eraseFlash) {
+                if (typeof ESPLoader.prototype.erase_flash === 'function') {
+                    ESPLoader.prototype.eraseFlash = ESPLoader.prototype.erase_flash;
+                }
+                if (typeof ESPLoader.prototype.chip_erase === 'function') {
+                    ESPLoader.prototype.eraseFlash = ESPLoader.prototype.chip_erase;
+                }
+                if (typeof ESPLoader.prototype.erase === 'function') {
+                    ESPLoader.prototype.eraseFlash = ESPLoader.prototype.erase;
+                }
+            }
+            
+            // Reset methods  
+            if (!ESPLoader.prototype.hardReset) {
+                if (typeof ESPLoader.prototype.hard_reset === 'function') {
+                    ESPLoader.prototype.hardReset = ESPLoader.prototype.hard_reset;
+                }
+                if (typeof ESPLoader.prototype.reset === 'function') {
+                    ESPLoader.prototype.hardReset = ESPLoader.prototype.reset;
+                }
             }
         }
         
@@ -817,7 +849,12 @@ async function init() {
                 terminal: terminal
             });
 
-            await loader.connect();
+            // Some versions expect connect on transport, others on loader
+            if (loader.connect) {
+                await loader.connect();
+            } else if (transport.connect) {
+                await transport.connect();
+            }
             terminal.writeLine('INFO Sync...');
             
             if (loader.sync) await loader.sync();
@@ -937,12 +974,23 @@ async function init() {
 
         try {
             terminal.writeLine('INFO Erasing flash...');
+            
+            // Try different erase method names
             if (loader.eraseFlash) {
                 await loader.eraseFlash();
-                terminal.writeLine('SUCCESS Flash erased');
+            } else if (loader.erase_flash) {
+                await loader.erase_flash();
+            } else if (loader.chip_erase) {
+                await loader.chip_erase();
+            } else if (loader.erase) {
+                await loader.erase();
             } else {
-                terminal.writeLine('ERROR Erase method not available');
+                terminal.writeLine('ERROR No erase method found. Available methods: ' + 
+                    Object.getOwnPropertyNames(Object.getPrototypeOf(loader)).filter(m => m.includes('erase')).join(', '));
+                return;
             }
+            
+            terminal.writeLine('SUCCESS Flash erased');
         } catch (error) {
             terminal.writeLine('ERROR Erase failed: ' + error.message);
         }
