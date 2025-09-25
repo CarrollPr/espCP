@@ -1,821 +1,974 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP Web Flasher</title>
+    <title>ESP32 Web Flasher</title>
+    <meta name="description" content="Flash ESP32 firmware directly from your browser using Web Serial API">
     <style>
-        :root {
-            --primary: #3a86ff;
-            --success: #38b000;
-            --warning: #ff9e00;
-            --error: #e63946;
-            --text: #f8f9fa;
-            --bg-dark: #08101a;
-            --bg-mid: #0b1522;
-            --bg-light: #051018;
-            --glass: rgba(255, 255, 255, 0.04);
-            --border: rgba(255, 255, 255, 0.1);
-        }
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            background: linear-gradient(135deg, var(--bg-dark), var(--bg-mid) 60%, var(--bg-light));
-            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
             min-height: 100vh;
-            padding: 20px;
+            color: #ffffff;
+            overflow-x: hidden;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .glass-panel {
-            background: var(--glass);
-            backdrop-filter: blur(10px) saturate(120%);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 24px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
             margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
-        header {
+        .header {
             text-align: center;
             margin-bottom: 30px;
         }
 
-        h1 {
+        .header h1 {
             font-size: 2.5rem;
-            margin-bottom: 10px;
-            background: linear-gradient(90deg, var(--primary), #6d28d9);
+            background: linear-gradient(45deg, #64b5f6, #42a5f5, #2196f3);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
         }
 
-        .subtitle {
+        .header p {
             color: rgba(255, 255, 255, 0.7);
             font-size: 1.1rem;
         }
 
         .banner {
-            background: linear-gradient(90deg, #e63946, #d00000);
-            padding: 15px;
-            border-radius: 10px;
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
             margin-bottom: 20px;
             text-align: center;
-            display: none;
+            color: #ffb74d;
+            font-size: 1.1rem;
         }
 
-        .banner.mobile {
-            background: linear-gradient(90deg, #ff9e00, #e85d04);
+        .section {
+            margin-bottom: 25px;
         }
 
-        .control-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+        .section-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #64b5f6;
+            border-bottom: 1px solid rgba(100, 181, 246, 0.3);
+            padding-bottom: 5px;
         }
 
-        @media (max-width: 768px) {
-            .control-section {
-                grid-template-columns: 1fr;
-            }
+        .form-group {
+            margin-bottom: 15px;
         }
 
-        .control-group {
+        .form-row {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .control-row {
-            display: flex;
-            gap: 10px;
+            gap: 15px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         label {
-            font-weight: 600;
-            min-width: 120px;
+            display: block;
+            margin-bottom: 5px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
         }
 
-        select, input, button {
-            padding: 10px 15px;
+        input, select, button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
-            border: 1px solid var(--border);
-            background: rgba(0, 0, 0, 0.3);
-            color: var(--text);
-            font-size: 1rem;
+            color: #ffffff;
+            padding: 10px 15px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #64b5f6;
+            box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
         }
 
         button {
-            background: linear-gradient(90deg, var(--primary), #4361ee);
-            border: none;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
+            font-weight: 500;
+            min-width: 120px;
         }
 
         button:hover {
+            background: rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         button:disabled {
-            background: rgba(255, 255, 255, 0.1);
+            opacity: 0.5;
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
         }
 
-        button.danger {
-            background: linear-gradient(90deg, var(--error), #d00000);
+        .btn-primary {
+            background: linear-gradient(45deg, #2196f3, #21cbf3);
+            border: none;
         }
 
-        button.success {
-            background: linear-gradient(90deg, var(--success), #38b000);
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #ff6b6b);
+            border: none;
         }
 
-        .file-inputs {
-            margin-bottom: 20px;
+        .btn-success {
+            background: linear-gradient(45deg, #4caf50, #66bb6a);
+            border: none;
         }
 
-        .file-row {
-            display: grid;
-            grid-template-columns: 1fr 150px 40px;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
-        }
-
-        .file-input-wrapper {
-            position: relative;
+        .progress-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 20px;
             overflow: hidden;
-            display: inline-block;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-        }
-
-        .file-name {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
-        }
-
-        .terminal-container {
-            margin-bottom: 20px;
-        }
-
-        .terminal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .terminal {
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 8px;
-            padding: 15px;
-            height: 300px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-
-        .terminal-line {
-            margin-bottom: 5px;
-            word-break: break-all;
-        }
-
-        .terminal-line.info {
-            color: var(--text);
-        }
-
-        .terminal-line.debug {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .terminal-line.error {
-            color: var(--error);
-        }
-
-        .terminal-line.success {
-            color: var(--success);
-        }
-
-        .terminal-line.warning {
-            color: var(--warning);
-        }
-
-        .progress-section {
-            margin-bottom: 20px;
+            margin: 10px 0;
         }
 
         .progress-bar {
-            height: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .progress-fill {
+            background: linear-gradient(45deg, #4caf50, #66bb6a);
             height: 100%;
-            background: linear-gradient(90deg, var(--primary), #4361ee);
             width: 0%;
             transition: width 0.3s ease;
+            border-radius: 10px;
         }
 
         .progress-text {
             text-align: center;
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
         }
 
-        .instructions {
+        .terminal {
             background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             padding: 15px;
-            margin-top: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.4;
         }
 
-        .instructions h3 {
+        .terminal-controls {
             margin-bottom: 10px;
-            color: var(--warning);
+            display: flex;
+            gap: 10px;
         }
 
-        .instructions ol {
-            margin-left: 20px;
-        }
-
-        .instructions li {
-            margin-bottom: 5px;
-        }
-
-        footer {
+        .file-drop {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 30px;
             text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-            color: rgba(255, 255, 255, 0.6);
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
 
-        .hidden {
-            display: none;
+        .file-drop:hover,
+        .file-drop.dragover {
+            border-color: #64b5f6;
+            background: rgba(100, 181, 246, 0.1);
+        }
+
+        .file-list {
+            margin-top: 15px;
+        }
+
+        .file-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .status.info {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            color: #64b5f6;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #81c784;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #e57373;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: auto;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .glass-panel {
+                padding: 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>ESP Web Flasher</h1>
-            <p class="subtitle">Прошивка ESP-устройств прямо из браузера</p>
-        </header>
+<!--
+README: ESP32 Web Flasher
+=========================
 
-        <div id="unsupported-banner" class="banner">
-            <strong>Ваш браузер не поддерживает WebSerial API.</strong> Откройте сайт в Google Chrome (Desktop/Android) или Microsoft Edge. На мобильных устройствах WebSerial часто не поддерживается.
-        </div>
+CDN Used: https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/+esm
+Fallback: https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/bundle.js
 
-        <div id="mobile-banner" class="banner mobile">
-            <strong>WebSerial API не поддерживается на вашем устройстве.</strong> Используйте Chrome на PC/Android.
-        </div>
+Testing Checklist:
+1. Open in Chrome/Edge on desktop with HTTPS
+2. Select ESP32 port (CP210x/CH340)
+3. Load .bin file and flash to 0x10000
+4. Test auto-boot and manual bootloader entry
+5. Verify mobile banner shows on mobile browsers
+6. Test error handling with disconnected device
 
-        <div class="glass-panel">
-            <div class="control-section">
-                <div class="control-group">
-                    <div class="control-row">
-                        <label for="baudrate">Baud Rate:</label>
-                        <select id="baudrate">
-                            <option value="115200">115200</option>
-                            <option value="230400">230400</option>
-                            <option value="460800" selected>460800</option>
-                            <option value="921600">921600</option>
-                        </select>
-                    </div>
-                    <div class="control-row">
-                        <label for="flash-mode">Flash Mode:</label>
-                        <select id="flash-mode">
-                            <option value="qio">QIO</option>
-                            <option value="qout">QOUT</option>
-                            <option value="dio" selected>DIO</option>
-                            <option value="dout">DOUT</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="control-group">
-                    <div class="control-row">
-                        <label for="flash-freq">Flash Freq:</label>
-                        <select id="flash-freq">
-                            <option value="40m" selected>40 MHz</option>
-                            <option value="26m">26 MHz</option>
-                            <option value="20m">20 MHz</option>
-                            <option value="80m">80 MHz</option>
-                        </select>
-                    </div>
-                    <div class="control-row">
-                        <label for="flash-size">Flash Size:</label>
-                        <select id="flash-size">
-                            <option value="detect" selected>Detect</option>
-                            <option value="1MB">1MB</option>
-                            <option value="2MB">2MB</option>
-                            <option value="4MB">4MB</option>
-                            <option value="8MB">8MB</option>
-                            <option value="16MB">16MB</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+References:
+- esptool-js GitHub: https://github.com/espressif/esptool-js
+- API docs: https://espressif.github.io/esptool-js/
+- Example flasher: https://esptool.spacehuhn.com/
+-->
 
-            <div class="control-row" style="justify-content: center; gap: 15px; margin-bottom: 20px;">
-                <button id="connect-btn" class="success">Connect</button>
-                <button id="disconnect-btn" disabled>Disconnect</button>
-                <button id="erase-btn" disabled class="danger">Erase Flash</button>
-                <button id="program-btn" disabled>Program Flash</button>
-            </div>
-
-            <div class="file-inputs">
-                <h3>Файлы для прошивки (до 4):</h3>
-                <div id="file-rows">
-                    <div class="file-row">
-                        <div class="file-input-wrapper">
-                            <button type="button">Выбрать файл</button>
-                            <input type="file" accept=".bin" class="file-input">
-                        </div>
-                        <input type="text" class="offset-input" placeholder="0x1000" value="0x1000">
-                        <button type="button" class="remove-file-btn" disabled>×</button>
-                    </div>
-                </div>
-                <button id="add-file-btn" type="button" style="margin-top: 10px;">+ Добавить файл</button>
-            </div>
-
-            <div class="progress-section">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
-                </div>
-                <div class="progress-text" id="progress-text">Готов к работе</div>
-            </div>
-
-            <div class="terminal-container">
-                <div class="terminal-header">
-                    <h3>Терминал</h3>
-                    <div>
-                        <button id="clear-terminal-btn">Очистить</button>
-                        <button id="download-logs-btn">Скачать логи</button>
-                    </div>
-                </div>
-                <div class="terminal" id="terminal"></div>
-            </div>
-
-            <div class="instructions">
-                <h3>Инструкция по переводу в режим прошивки:</h3>
-                <p><strong>ESP32 DevKit:</strong> Зажать кнопку BOOT (GPIO0), нажать RST, отпустить RST, затем отпустить BOOT.</p>
-                <p><strong>ESP32-C3:</strong> Зажать кнопку BOOT при подключении или сбросе.</p>
-                <p><strong>ESP8266:</strong> Удерживайте GPIO0 на земле при сбросе.</p>
-                <p>Если автоматический режим не сработал, попробуйте ручной метод для вашей платы.</p>
-            </div>
-        </div>
-
-        <footer>
-            by Aik Carroll
-        </footer>
+<div class="container">
+    <div class="header">
+        <h1>ESP32 Web Flasher</h1>
+        <p>Flash firmware directly from your browser using Web Serial API</p>
     </div>
 
-    <script>
-        // Проверяем поддержку WebSerial API
-        const isWebSerialSupported = 'serial' in navigator;
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    <div id="unsupported-banner" class="banner" style="display: none;">
+        Ваш браузер не поддерживает WebSerial API. Пожалуйста, используйте Chrome или Edge на компьютере.
+    </div>
 
-        // Элементы UI
-        const unsupportedBanner = document.getElementById('unsupported-banner');
-        const mobileBanner = document.getElementById('mobile-banner');
-        const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
-        const eraseBtn = document.getElementById('erase-btn');
-        const programBtn = document.getElementById('program-btn');
-        const baudrateSelect = document.getElementById('baudrate');
-        const flashModeSelect = document.getElementById('flash-mode');
-        const flashFreqSelect = document.getElementById('flash-freq');
-        const flashSizeSelect = document.getElementById('flash-size');
-        const fileRowsContainer = document.getElementById('file-rows');
-        const addFileBtn = document.getElementById('add-file-btn');
-        const terminal = document.getElementById('terminal');
-        const clearTerminalBtn = document.getElementById('clear-terminal-btn');
-        const downloadLogsBtn = document.getElementById('download-logs-btn');
-        const progressFill = document.getElementById('progress-fill');
-        const progressText = document.getElementById('progress-text');
+    <div id="https-warning" class="banner" style="display: none;">
+        WebSerial требует secure context (HTTPS или localhost).
+    </div>
 
-        // Состояние приложения
-        let port = null;
-        let esploader = null;
-        let terminalLogs = [];
-        let isConnected = false;
-
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            // Проверка поддержки WebSerial
-            if (!isWebSerialSupported) {
-                unsupportedBanner.style.display = 'block';
-                disableAllControls();
-            } else if (isMobile) {
-                mobileBanner.style.display = 'block';
-                disableAllControls();
-            }
-
-            // Настройка обработчиков событий
-            setupEventListeners();
-        });
-
-        function disableAllControls() {
-            connectBtn.disabled = true;
-            disconnectBtn.disabled = true;
-            eraseBtn.disabled = true;
-            programBtn.disabled = true;
-            addFileBtn.disabled = true;
-        }
-
-        function setupEventListeners() {
-            connectBtn.addEventListener('click', connectToDevice);
-            disconnectBtn.addEventListener('click', disconnectFromDevice);
-            eraseBtn.addEventListener('click', eraseFlash);
-            programBtn.addEventListener('click', programFlash);
-            addFileBtn.addEventListener('click', addFileRow);
-            clearTerminalBtn.addEventListener('click', clearTerminal);
-            downloadLogsBtn.addEventListener('click', downloadLogs);
-
-            // Обработчики для динамически добавляемых элементов
-            fileRowsContainer.addEventListener('click', function(e) {
-                if (e.target.classList.contains('remove-file-btn')) {
-                    removeFileRow(e.target.closest('.file-row'));
-                }
-            });
-
-            fileRowsContainer.addEventListener('change', function(e) {
-                if (e.target.classList.contains('file-input')) {
-                    updateFileName(e.target);
-                }
-            });
-        }
-
-        function logToTerminal(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            const logLine = document.createElement('div');
-            logLine.className = `terminal-line ${type}`;
-            logLine.textContent = `[${timestamp}] ${message}`;
-            terminal.appendChild(logLine);
-            
-            // Сохраняем лог для скачивания
-            terminalLogs.push(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
-            
-            // Автоскролл к последнему сообщению
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-
-        function clearTerminal() {
-            terminal.innerHTML = '';
-            terminalLogs = [];
-            logToTerminal('Терминал очищен', 'info');
-        }
-
-        function downloadLogs() {
-            const logText = terminalLogs.join('\n');
-            const blob = new Blob([logText], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `esp-flasher-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function updateProgress(percent, text) {
-            progressFill.style.width = `${percent}%`;
-            progressText.textContent = text;
-        }
-
-        function addFileRow() {
-            const fileRows = document.querySelectorAll('.file-row');
-            if (fileRows.length >= 4) {
-                alert('Максимум 4 файла');
-                return;
-            }
-
-            const newRow = document.createElement('div');
-            newRow.className = 'file-row';
-            newRow.innerHTML = `
-                <div class="file-input-wrapper">
-                    <button type="button">Выбрать файл</button>
-                    <input type="file" accept=".bin" class="file-input">
+    <div class="glass-panel">
+        <div class="section">
+            <h3 class="section-title">Connection</h3>
+            <div class="form-row">
+                <button id="select-port" class="btn-primary">Select Port</button>
+                <button id="connect-btn" class="btn-success" disabled>Connect</button>
+                <button id="disconnect-btn" class="btn-danger" disabled>Disconnect</button>
+                <div class="form-group">
+                    <label for="baud-rate">Baud Rate:</label>
+                    <select id="baud-rate">
+                        <option value="115200">115200</option>
+                        <option value="230400">230400</option>
+                        <option value="460800">460800</option>
+                        <option value="921600" selected>921600</option>
+                    </select>
                 </div>
-                <input type="text" class="offset-input" placeholder="0x1000" value="0x${(0x1000 + fileRows.length * 0x10000).toString(16)}">
-                <button type="button" class="remove-file-btn">×</button>
-            `;
-            fileRowsContainer.appendChild(newRow);
+                <div class="checkbox-group">
+                    <input type="checkbox" id="auto-boot" checked>
+                    <label for="auto-boot">Auto-boot</label>
+                </div>
+            </div>
+            <div id="port-info" class="status info" style="display: none;"></div>
+        </div>
 
-            // Активируем кнопки удаления, если файлов больше одного
-            if (fileRows.length >= 1) {
-                document.querySelectorAll('.remove-file-btn').forEach(btn => {
-                    btn.disabled = false;
-                });
+        <div class="section">
+            <h3 class="section-title">Firmware Files</h3>
+            <div class="file-drop" id="file-drop">
+                <p>Drag & drop .bin files here or click to select</p>
+                <input type="file" id="file-input" accept=".bin" multiple style="display: none;">
+            </div>
+            <div id="file-list" class="file-list"></div>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">Flash Options</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="address">Address (hex):</label>
+                    <input type="text" id="address" value="0x10000" placeholder="0x10000">
+                </div>
+                <div class="form-group">
+                    <label for="chunk-size">Chunk Size:</label>
+                    <select id="chunk-size">
+                        <option value="4096">4096</option>
+                        <option value="8192" selected>8192</option>
+                        <option value="16384">16384</option>
+                    </select>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="verify-flash" checked>
+                    <label for="verify-flash">Verify after flash</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="erase-chip">
+                    <label for="erase-chip">Erase entire chip</label>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <button id="flash-btn" class="btn-primary" disabled>Flash</button>
+                <button id="erase-btn" class="btn-danger" disabled>Erase Flash</button>
+                <button id="reset-btn" class="btn-success" disabled>Reset Device</button>
+            </div>
+
+            <div id="progress-container" style="display: none;">
+                <div class="progress-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+                <div id="progress-text" class="progress-text">0%</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">Terminal</h3>
+            <div class="terminal-controls">
+                <button id="clear-terminal">Clear</button>
+                <button id="copy-terminal">Copy Log</button>
+                <button id="download-log">Download Log</button>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="debug-mode">
+                    <label for="debug-mode">Debug Mode</label>
+                </div>
+            </div>
+            <div id="terminal" class="terminal"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        by Aik Carroll
+    </div>
+</div>
+
+<script type="module">
+let port = null;
+let loader = null;
+let terminal = null;
+let files = [];
+let logData = [];
+let isConnected = false;
+
+// Check browser support
+function checkSupport() {
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+    const hasSerial = 'serial' in navigator;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (!isSecure) {
+        document.getElementById('https-warning').style.display = 'block';
+        return false;
+    }
+
+    if (!hasSerial || isMobile) {
+        document.getElementById('unsupported-banner').style.display = 'block';
+        return false;
+    }
+
+    return true;
+}
+
+// Terminal functions
+function createTerminal() {
+    return {
+        write: (text) => {
+            const timestamp = new Date().toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            });
+            
+            const line = `[${timestamp}] ${text}`;
+            logData.push(line);
+            
+            const terminalEl = document.getElementById('terminal');
+            const div = document.createElement('div');
+            div.textContent = line;
+            terminalEl.appendChild(div);
+            terminalEl.scrollTop = terminalEl.scrollHeight;
+        },
+        writeLine: (text) => {
+            terminal.write(text + '\n');
+        },
+        clean: () => {
+            document.getElementById('terminal').innerHTML = '';
+            logData = [];
+        }
+    };
+}
+
+// Import esptool-js
+async function loadESPTool() {
+    terminal.writeLine('INFO Loading esptool-js...');
+    
+    try {
+        // Try ESM import first
+        terminal.writeLine('DEBUG Attempting ESM import from CDN...');
+        const module = await import('https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/+esm');
+        
+        terminal.writeLine('DEBUG Module exports: ' + Object.keys(module).join(', '));
+        
+        if (module.ESPLoader) {
+            terminal.writeLine('INFO ESPLoader found in ESM module');
+            return module;
+        }
+        
+        throw new Error('ESPLoader not found in ESM module');
+        
+    } catch (error) {
+        terminal.writeLine('ERROR ESM import failed: ' + error.message);
+        terminal.writeLine('INFO Falling back to classic bundle...');
+        
+        try {
+            // Load classic bundle
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/bundle.js';
+            
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            
+            terminal.writeLine('DEBUG Window exports: ' + Object.keys(window).filter(k => k.includes('ESP')).join(', '));
+            
+            if (window.ESPLoader) {
+                terminal.writeLine('INFO ESPLoader found in global scope');
+                return window;
+            }
+            
+            throw new Error('ESPLoader not found in bundle');
+            
+        } catch (bundleError) {
+            terminal.writeLine('ERROR Bundle load failed: ' + bundleError.message);
+            terminal.writeLine('ERROR Available window keys: ' + Object.keys(window).join(', '));
+            throw new Error('Failed to load esptool-js. Try using a different CDN build or check the espressif/esptool-js repository for latest releases.');
+        }
+    }
+}
+
+// WebSerial Transport Adapter
+class WebSerialTransportAdapter {
+    constructor(port) {
+        this.port = port;
+        this.reader = null;
+        this.writer = null;
+    }
+
+    async open(options = {}) {
+        const baudRate = options.baudRate || 115200;
+        await this.port.open({ baudRate });
+        this.reader = this.port.readable.getReader();
+        this.writer = this.port.writable.getWriter();
+        terminal.writeLine(`INFO Port opened at ${baudRate} baud`);
+    }
+
+    async close() {
+        if (this.reader) {
+            await this.reader.releaseLock();
+            this.reader = null;
+        }
+        if (this.writer) {
+            await this.writer.releaseLock();
+            this.writer = null;
+        }
+        if (this.port) {
+            await this.port.close();
+        }
+        terminal.writeLine('INFO Port closed');
+    }
+
+    async write(data) {
+        if (!this.writer) throw new Error('Port not open for writing');
+        await this.writer.write(data);
+        if (document.getElementById('debug-mode').checked) {
+            terminal.writeLine('DEBUG TX: ' + Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
+        }
+    }
+
+    async read(timeout = 3000) {
+        if (!this.reader) throw new Error('Port not open for reading');
+        
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Read timeout')), timeout)
+        );
+        
+        const readPromise = this.reader.read();
+        const result = await Promise.race([readPromise, timeoutPromise]);
+        
+        if (result.done) {
+            throw new Error('Port closed');
+        }
+        
+        if (document.getElementById('debug-mode').checked) {
+            terminal.writeLine('DEBUG RX: ' + Array.from(result.value).map(b => b.toString(16).padStart(2, '0')).join(' '));
+        }
+        
+        return result.value;
+    }
+
+    async setSignals(signals) {
+        if (this.port.setSignals) {
+            await this.port.setSignals(signals);
+            if (document.getElementById('debug-mode').checked) {
+                terminal.writeLine(`DEBUG Signals: DTR=${signals.dataTerminalReady}, RTS=${signals.requestToSend}`);
             }
         }
+    }
 
-        function removeFileRow(row) {
-            const fileRows = document.querySelectorAll('.file-row');
-            if (fileRows.length <= 1) {
-                alert('Должен остаться хотя бы один файл');
-                return;
-            }
-            row.remove();
+    getInfo() {
+        return this.port.getInfo();
+    }
+}
 
-            // Деактивируем кнопку удаления, если файл один
-            if (fileRows.length <= 2) {
-                document.querySelector('.remove-file-btn').disabled = true;
-            }
+// Auto-enter bootloader
+async function autoEnterBootloader(port) {
+    if (!port.setSignals) {
+        terminal.writeLine('ERROR Auto-boot not supported by this port');
+        return false;
+    }
+
+    try {
+        terminal.writeLine('INFO Attempting auto-enter bootloader...');
+        
+        await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+        await new Promise(resolve => setTimeout(resolve, 20));
+        
+        await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+        await new Promise(resolve => setTimeout(resolve, 120));
+        
+        await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        terminal.writeLine('INFO Auto-boot sequence completed');
+        return true;
+        
+    } catch (error) {
+        terminal.writeLine('ERROR Auto-boot failed: ' + error.message);
+        return false;
+    }
+}
+
+// Update progress
+function updateProgress(percentage, speed = '', eta = '') {
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
+    progressBar.style.width = percentage + '%';
+    progressText.textContent = `${percentage}% ${speed} ${eta}`;
+}
+
+// File handling
+function handleFiles(fileList) {
+    files = [];
+    const fileListEl = document.getElementById('file-list');
+    fileListEl.innerHTML = '';
+
+    Array.from(fileList).forEach((file, index) => {
+        if (!file.name.endsWith('.bin')) {
+            terminal.writeLine('ERROR Only .bin files are supported: ' + file.name);
+            return;
         }
 
-        function updateFileName(input) {
-            const wrapper = input.closest('.file-input-wrapper');
-            const button = wrapper.querySelector('button');
-            if (input.files.length > 0) {
-                button.textContent = input.files[0].name;
-            } else {
-                button.textContent = 'Выбрать файл';
-            }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const fileObj = {
+                name: file.name,
+                data: data,
+                address: index === 0 ? 0x10000 : 0x8000 + (index * 0x8000)
+            };
+            
+            files.push(fileObj);
+            
+            // Calculate SHA-1
+            crypto.subtle.digest('SHA-1', data).then(hashBuffer => {
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file-item';
+                fileDiv.innerHTML = `
+                    <div>
+                        <strong>${file.name}</strong><br>
+                        Size: ${data.length} bytes, SHA-1: ${hashHex.substring(0, 16)}...
+                    </div>
+                    <div>
+                        <input type="text" value="0x${fileObj.address.toString(16)}" 
+                               style="width: 100px; margin-right: 10px;"
+                               onchange="updateFileAddress(${files.length - 1}, this.value)">
+                        <button onclick="removeFile(${files.length - 1})">Remove</button>
+                    </div>
+                `;
+                fileListEl.appendChild(fileDiv);
+                
+                document.getElementById('flash-btn').disabled = false;
+                terminal.writeLine(`INFO Loaded ${file.name} (${data.length} bytes) at 0x${fileObj.address.toString(16)}`);
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+window.updateFileAddress = (index, value) => {
+    const address = parseInt(value, value.startsWith('0x') ? 16 : 10);
+    if (!isNaN(address)) {
+        files[index].address = address;
+        terminal.writeLine(`INFO Updated ${files[index].name} address to 0x${address.toString(16)}`);
+    }
+};
+
+window.removeFile = (index) => {
+    const fileName = files[index].name;
+    files.splice(index, 1);
+    document.getElementById('file-list').children[index].remove();
+    terminal.writeLine(`INFO Removed ${fileName}`);
+    
+    if (files.length === 0) {
+        document.getElementById('flash-btn').disabled = true;
+    }
+};
+
+// Initialize
+async function init() {
+    if (!checkSupport()) return;
+
+    terminal = createTerminal();
+    terminal.writeLine('INFO ESP32 Web Flasher initialized');
+
+    try {
+        const espModule = await loadESPTool();
+        window.espModule = espModule;
+        terminal.writeLine('INFO esptool-js loaded successfully');
+    } catch (error) {
+        terminal.writeLine('ERROR ' + error.message);
+        return;
+    }
+
+    // Event listeners
+    document.getElementById('select-port').addEventListener('click', async () => {
+        try {
+            const filters = [
+                { usbVendorId: 0x10C4 }, // CP210x
+                { usbVendorId: 0x1A86 }, // CH340
+                { usbVendorId: 0x0403 }, // FTDI
+                { usbVendorId: 0x067B }  // Prolific
+            ];
+            
+            port = await navigator.serial.requestPort({ filters });
+            const info = port.getInfo();
+            
+            document.getElementById('port-info').style.display = 'block';
+            document.getElementById('port-info').textContent = 
+                `Port selected: VID:${info.usbVendorId?.toString(16)} PID:${info.usbProductId?.toString(16)}`;
+            document.getElementById('connect-btn').disabled = false;
+            
+            terminal.writeLine(`INFO Port selected: VID:${info.usbVendorId?.toString(16)} PID:${info.usbProductId?.toString(16)}`);
+        } catch (error) {
+            terminal.writeLine('ERROR Port selection failed: ' + error.message);
         }
+    });
 
-        async function connectToDevice() {
-            if (!isWebSerialSupported) {
-                logToTerminal('WebSerial не поддерживается в этом браузере', 'error');
-                return;
-            }
+    document.getElementById('connect-btn').addEventListener('click', async () => {
+        if (!port || !window.espModule) return;
 
-            try {
-                logToTerminal('Запрашиваю доступ к последовательному порту...', 'info');
-                port = await navigator.serial.requestPort({ filters: [] });
-                
-                logToTerminal('Открываю порт...', 'info');
-                const baudRate = parseInt(baudrateSelect.value);
-                await port.open({ baudRate });
-                
-                logToTerminal(`Порт открыт на скорости ${baudRate} бод`, 'success');
-                
-                // Загружаем esptool-js
-                await loadEsptoolJs();
-                
-                // Создаем транспорт и загрузчик
-                const transport = new ESPLoader.WebSerialTransport(port);
-                const terminalObj = {
-                    clean: () => clearTerminal(),
-                    writeLine: (data) => logToTerminal(data, 'info'),
-                    write: (data) => logToTerminal(data, 'debug')
-                };
-                
-                esploader = new ESPLoader.ESPLoader({
-                    transport: transport,
-                    baudrate: baudRate,
-                    terminal: terminalObj
-                });
-                
-                logToTerminal('Подключаюсь к устройству...', 'info');
-                updateProgress(10, 'Подключение...');
-                
-                // Пытаемся определить чип
-                await esploader.connect();
-                const chip = await esploader.detectChip();
-                
-                logToTerminal(`Обнаружен чип: ${chip.CHIP_NAME}`, 'success');
-                updateProgress(30, `Чип: ${chip.CHIP_NAME}`);
-                
-                isConnected = true;
-                connectBtn.disabled = true;
-                disconnectBtn.disabled = false;
-                eraseBtn.disabled = false;
-                programBtn.disabled = false;
-                
-                logToTerminal('Устройство готово к прошивке', 'success');
-                updateProgress(0, 'Готов к прошивке');
-                
-            } catch (error) {
-                logToTerminal(`Ошибка подключения: ${error.message}`, 'error');
-                updateProgress(0, 'Ошибка подключения');
-                
-                if (error.message.includes('Bootloader not active') || 
-                    error.message.includes('No serial data received')) {
-                    logToTerminal('Устройство не в режиме загрузчика. Удерживайте BOOT/GPIO0 при сбросе.', 'warning');
-                } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    logToTerminal('Таймаут подключения. Попробуйте другой кабель или уменьшите скорость.', 'warning');
+        try {
+            terminal.writeLine('INFO Подключение...');
+            
+            const baudRate = parseInt(document.getElementById('baud-rate').value);
+            const transport = new WebSerialTransportAdapter(port);
+            
+            await transport.open({ baudRate });
+            
+            // Auto-boot if enabled
+            if (document.getElementById('auto-boot').checked) {
+                const bootSuccess = await autoEnterBootloader(port);
+                if (!bootSuccess) {
+                    terminal.writeLine('WARNING Авто-вход в bootloader не сработал. Удерживайте BOOT (GPIO0), нажмите RESET (EN), отпустите RESET, отпустите BOOT.');
                 }
-                
-                if (port) {
-                    try {
-                        await port.close();
-                    } catch (e) {
-                        // Игнорируем ошибки закрытия порта
-                    }
-                    port = null;
-                }
+            }
+
+            loader = new window.espModule.ESPLoader({
+                transport: transport,
+                baudrate: baudRate,
+                terminal: terminal
+            });
+
+            await loader.connect();
+            terminal.writeLine('INFO Sync...');
+            
+            if (loader.sync) await loader.sync();
+            if (loader.detectChip) {
+                const chip = await loader.detectChip();
+                terminal.writeLine(`INFO Detected chip: ${chip}`);
+            }
+
+            isConnected = true;
+            document.getElementById('connect-btn').disabled = true;
+            document.getElementById('disconnect-btn').disabled = false;
+            document.getElementById('flash-btn').disabled = files.length === 0;
+            document.getElementById('erase-btn').disabled = false;
+            document.getElementById('reset-btn').disabled = false;
+            
+            terminal.writeLine('SUCCESS Connected to ESP32');
+            
+        } catch (error) {
+            terminal.writeLine('ERROR Connection failed: ' + error.message);
+            if (error.message.includes('Timed out waiting for packet header')) {
+                terminal.writeLine('WARNING Плата не в bootloader. Выполните ручной вход: Удерживайте BOOT (GPIO0), нажмите RESET (EN), отпустите RESET, отпустите BOOT');
             }
         }
+    });
 
-        async function disconnectFromDevice() {
-            if (port) {
-                try {
-                    await port.close();
-                    logToTerminal('Порт закрыт', 'info');
-                } catch (error) {
-                    logToTerminal(`Ошибка при закрытии порта: ${error.message}`, 'error');
-                }
-                port = null;
+    document.getElementById('disconnect-btn').addEventListener('click', async () => {
+        try {
+            if (loader && loader.transport) {
+                await loader.transport.close();
             }
             
             isConnected = false;
-            connectBtn.disabled = false;
-            disconnectBtn.disabled = true;
-            eraseBtn.disabled = true;
-            programBtn.disabled = true;
+            loader = null;
+            document.getElementById('connect-btn').disabled = false;
+            document.getElementById('disconnect-btn').disabled = true;
+            document.getElementById('flash-btn').disabled = true;
+            document.getElementById('erase-btn').disabled = true;
+            document.getElementById('reset-btn').disabled = true;
             
-            updateProgress(0, 'Отключено');
-            logToTerminal('Устройство отключено', 'info');
+            terminal.writeLine('INFO Disconnected');
+        } catch (error) {
+            terminal.writeLine('ERROR Disconnect failed: ' + error.message);
         }
+    });
 
-        async function eraseFlash() {
-            if (!esploader || !isConnected) {
-                logToTerminal('Сначала подключитесь к устройству', 'error');
-                return;
-            }
-            
-            if (!confirm('Вы уверены, что хотите стереть всю флеш-память? Это действие нельзя отменить.')) {
-                return;
-            }
-            
-            try {
-                logToTerminal('Начинаю стирание флеш-памяти...', 'info');
-                updateProgress(0, 'Стирание...');
-                
-                await esploader.eraseFlash();
-                
-                logToTerminal('Флеш-память успешно стерта', 'success');
-                updateProgress(100, 'Стирание завершено');
-                
-                // Сбрасываем прогресс через 3 секунды
-                setTimeout(() => updateProgress(0, 'Готов к прошивке'), 3000);
-                
-            } catch (error) {
-                logToTerminal(`Ошибка при стирании: ${error.message}`, 'error');
-                updateProgress(0, 'Ошибка стирания');
-            }
-        }
+    document.getElementById('flash-btn').addEventListener('click', async () => {
+        if (!loader || files.length === 0) return;
 
-        async function programFlash() {
-            if (!esploader || !isConnected) {
-                logToTerminal('Сначала подключитесь к устройству', 'error');
-                return;
-            }
+        try {
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('flash-btn').disabled = true;
             
-            // Проверяем файлы
-            const fileInputs = document.querySelectorAll('.file-input');
-            const offsetInputs = document.querySelectorAll('.offset-input');
-            
-            const files = [];
-            let hasErrors = false;
-            
-            for (let i = 0; i < fileInputs.length; i++) {
-                const fileInput = fileInputs[i];
-                const offsetInput = offsetInputs[i];
-                
-                if (!fileInput.files.length) {
-                    logToTerminal(`Файл #${i+1} не выбран`, 'error');
-                    hasErrors = true;
-                    continue;
+            const eraseChip = document.getElementById('erase-chip').checked;
+            const verifyFlash = document.getElementById('verify-flash').checked;
+            const chunkSize = parseInt(document.getElementById('chunk-size').value);
+
+            if (eraseChip) {
+                terminal.writeLine('INFO Erase...');
+                if (loader.eraseFlash) {
+                    await loader.eraseFlash();
                 }
-                
-                const offset = parseInt(offsetInput.value, 16);
-                if (isNaN(offset)) {
-                    logToTerminal(`Неверный offset для файла #${i+1}: ${offsetInput.value}`, 'error');
-                    hasErrors = true;
-                    continue;
-                }
-                
-                files.push({
-                    file: fileInput.files[0],
-                    offset: offset
-                });
             }
+
+            terminal.writeLine('INFO Starting flash...');
             
-            if (hasErrors || files.length === 0) {
-                logToTerminal('Исправьте ошибки в настройках файлов', 'error');
-                return;
-            }
-            
-            try {
-                logToTerminal('Начинаю прошивку...', 'info');
-                updateProgress(0, 'Подготовка...');
-                
-                // Настройки прошивки
-                const flashOptions = {
-                    fileArray: files,
-                    flashMode: flashModeSelect.value,
-                    flashFreq: flashFreqSelect.value,
-                    flashSize: flashSizeSelect.value === 'detect' ? undefined : flashSizeSelect.value,
-                    eraseAll: document.getElementById('erase-before-flash')?.checked || false,
-                    compress: true,
-                    reportProgress: (fileIndex, written, total) => {
-                        const percent = Math.round((written / total) * 100);
-                        updateProgress(percent, `Прошивка файла ${fileIndex+1}/${files.length}: ${percent}%`);
+            const flashFiles = files.map(f => ({
+                address: f.address,
+                data: f.data
+            }));
+
+            let totalSize = files.reduce((sum, f) => sum + f.data.length, 0);
+            let written = 0;
+            const startTime = Date.now();
+
+            const options = {
+                chunkSize: chunkSize,
+                reportProgress: (fileIndex, bytesWritten, totalBytes) => {
+                    const currentFile = files[fileIndex];
+                    const globalProgress = Math.round((written + bytesWritten) / totalSize * 100);
+                    
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    const speed = Math.round((written + bytesWritten) / elapsed / 1024);
+                    const eta = elapsed > 0 ? Math.round((totalSize - written - bytesWritten) / ((written + bytesWritten) / elapsed)) : 0;
+                    
+                    updateProgress(globalProgress, `${speed} KB/s`, `ETA: ${eta}s`);
+                    
+                    if (bytesWritten === totalBytes) {
+                        written += totalBytes;
+                        terminal.writeLine(`INFO Completed ${currentFile.name}`);
                     }
-                };
-                
-                // Прошиваем
-                await esploader.writeFlash(flashOptions);
-                
-                logToTerminal('Прошивка завершена успешно', 'success');
-                updateProgress(100, 'Прошивка завершена');
-                
-                logToTerminal('Перезагрузка устройства...', 'info');
-                await esploader.hardReset();
-                
-                logToTerminal('Устройство перезагружено', 'success');
-                
-                // Сбрасываем прогресс через 5 секунд
-                setTimeout(() => updateProgress(0, 'Готов к работе'), 5000);
-                
-            } catch (error) {
-                logToTerminal(`Ошибка при прошивке: ${error.message}`, 'error');
-                updateProgress(0, 'Ошибка прошивки');
-                
-                if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    logToTerminal('Таймаут операции. Попробуйте уменьшить скорость или проверьте питание устройства.', 'warning');
-                } else if (error.message.includes('verification failed')) {
-                    logToTerminal('Ошибка верификации. Возможно, плохой контакт или нестабильное питание.', 'warning');
                 }
-            }
-        }
+            };
 
-        // Динамическая загрузка esptool-js
-        async function loadEsptoolJs() {
-            return new Promise((resolve, reject) => {
-                if (window.ESPLoader) {
-                    resolve();
-                    return;
-                }
-                
-                logToTerminal('Загрузка esptool-js...', 'info');
-                
-                // Пытаемся загрузить с указанием версии (последняя стабильная на момент написания)
-                const version = '0.2.0';
-                const script = document.createElement('script');
-                script.src = `https://unpkg.com/esptool-js@${version}/lib/index.js`;
-                
-                script.onload = () => {
-                    logToTerminal('esptool-js успешно загружен', 'success');
-                    resolve();
-                };
-                
-                script.onerror = () => {
-                    logToTerminal('Ошибка загрузки esptool-js, пробую fallback...', 'warning');
-                    
-                    // Fallback без версии
-                    const fallbackScript = document.createElement('script');
-                    fallbackScript.src = 'https://unpkg.com/esptool-js/lib/index.js';
-                    
-                    fallbackScript.onload = () => {
-                        logToTerminal('esptool-js загружен через fallback', 'success');
-                        resolve();
-                    };
-                    
-                    fallbackScript.onerror = () => {
-                        logToTerminal('Не удалось загрузить esptool-js', 'error');
-                        reject(new Error('Failed to load esptool-js'));
-                    };
-                    
-                    document.head.appendChild(fallbackScript);
-                };
-                
-                document.head.appendChild(script);
-            });
+            if (loader.writeFlash) {
+                await loader.writeFlash(flashFiles, options);
+            } else {
+                throw new Error('writeFlash method not available. Поменяйте CDN на сборку, экспортирующую ESPLoader.writeFlash, либо используйте репозиторий espressif/esptool-js');
+            }
+
+            if (verifyFlash && loader.verifyFlash) {
+                terminal.writeLine('INFO Verify...');
+                await loader.verifyFlash(flashFiles);
+            }
+
+            updateProgress(100, 'Complete', '');
+            terminal.writeLine('SUCCESS Готово — устройство запущено.');
+            
+        } catch (error) {
+            terminal.writeLine('ERROR Flash failed: ' + error.message);
+        } finally {
+            document.getElementById('flash-btn').disabled = false;
         }
-    </script>
+    });
+
+    document.getElementById('erase-btn').addEventListener('click', async () => {
+        if (!loader) return;
+
+        try {
+            terminal.writeLine('INFO Erasing flash...');
+            if (loader.eraseFlash) {
+                await loader.eraseFlash();
+                terminal.writeLine('SUCCESS Flash erased');
+            } else {
+                terminal.writeLine('ERROR Erase method not available');
+            }
+        } catch (error) {
+            terminal.writeLine('ERROR Erase failed: ' + error.message);
+        }
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', async () => {
+        if (!loader) return;
+
+        try {
+            terminal.writeLine('INFO Resetting device...');
+            if (loader.hardReset) {
+                await loader.hardReset();
+                terminal.writeLine('SUCCESS Device reset');
+            } else if (loader.transport && loader.transport.setSignals) {
+                await loader.transport.setSignals({ dataTerminalReady: false, requestToSend: true });
+                await new Promise(resolve => setTimeout(resolve, 100));
+                await loader.transport.setSignals({ dataTerminalReady: false, requestToSend: false });
+                terminal.writeLine('SUCCESS Device reset');
+            } else {
+                terminal.writeLine('ERROR Reset method not available');
+            }
+        } catch (error) {
+            terminal.writeLine('ERROR Reset failed: ' + error.message);
+        }
+    });
+
+    // File handling
+    const fileInput = document.getElementById('file-input');
+    const fileDrop = document.getElementById('file-drop');
+
+    fileDrop.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    fileDrop.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileDrop.classList.add('dragover');
+    });
+
+    fileDrop.addEventListener('dragleave', () => {
+        fileDrop.classList.remove('dragover');
+    });
+
+    fileDrop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileDrop.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    // Terminal controls
+    document.getElementById('clear-terminal').addEventListener('click', () => {
+        terminal.clean();
+    });
+
+    document.getElementById('copy-terminal').addEventListener('click', () => {
+        const text = logData.join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+            terminal.writeLine('INFO Log copied to clipboard');
+        });
+    });
+
+    document.getElementById('download-log').addEventListener('click', () => {
+        const text = logData.join('\n');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `esp-flasher-log-${new Date().toISOString().split('T')[0]}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
+// Start initialization
+init().catch(error => {
+    console.error('Initialization failed:', error);
+});
+</script>
 </body>
 </html>
